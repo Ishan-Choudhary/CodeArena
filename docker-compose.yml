@@ -1,0 +1,32 @@
+name: codearena
+
+services:
+  backend:
+    ports:
+      - "8000:8000"
+    build:
+      context: ./backend/
+    volumes:
+      - type: bind
+        source: ./backend/
+        target: /app/
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:18.4
+    env_file: "db.env"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    
+
+volumes:
+  pgdata:
+  redis_data:
