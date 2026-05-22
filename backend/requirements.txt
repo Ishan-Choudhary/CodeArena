@@ -2,3 +2,6 @@ django
 djangorestframework
 channels[daphne]
 django-cors-headers
+psycopg[binary,pool]
+djoser
+djangorestframework_simplejwt
