@@ -13,12 +13,15 @@ services:
     depends_on:
       - db
       - redis
+    env_file:
+      - db.env
+      - backend.env
 
   db:
     image: postgres:18.4
     env_file: "db.env"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/
     
   redis:
     image: redis:7

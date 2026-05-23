@@ -1,6 +1,6 @@
 backend/venv/
 
-db.env
+*.env
 .env
 
 **/__pycache__/
