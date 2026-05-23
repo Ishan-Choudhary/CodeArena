@@ -23,4 +23,6 @@ urlpatterns = [
     path("auth/jwt/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
     re_path(r"^auth/", include("djoser.urls")),
     re_path(r'^auth/', include('djoser.urls.jwt')),
+    path("martor/", include("martor.urls")),
+    path("api/problems/", include("apps.problems.urls")),
 ]
