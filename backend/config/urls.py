@@ -25,4 +25,5 @@ urlpatterns = [
     re_path(r'^auth/', include('djoser.urls.jwt')),
     path("martor/", include("martor.urls")),
     path("api/problems/", include("apps.problems.urls")),
+    path("api/rooms/", include("apps.rooms.urls")),
 ]

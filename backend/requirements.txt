@@ -6,3 +6,4 @@ psycopg[binary,pool]
 djoser
 djangorestframework_simplejwt
 martor
+factory-boy
