@@ -17,6 +17,16 @@ services:
       - db.env
       - backend.env
 
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+
   db:
     image: postgres:18.4
     env_file: "db.env"

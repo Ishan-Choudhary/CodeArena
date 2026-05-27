@@ -1,4 +1,9 @@
 backend/venv/
+frontend/node_modules/
+UI_DOC.pdf
+.cursorrules
+
+.antigravitycli/
 
 *.env
 .env
