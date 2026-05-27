@@ -16,13 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, re_path, include
-from rest_framework_simplejwt.views import TokenBlacklistView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path("auth/jwt/logout/", TokenBlacklistView.as_view(), name="token_blacklist"),
-    re_path(r"^auth/", include("djoser.urls")),
-    re_path(r'^auth/', include('djoser.urls.jwt')),
+    path("api/jwt/", include("django_cookiejwt.urls")),
+    re_path(r"^api/auth/", include("djoser.urls")),
     path("martor/", include("martor.urls")),
     path("api/problems/", include("apps.problems.urls")),
     path("api/rooms/", include("apps.rooms.urls")),

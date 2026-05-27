@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 
 """
 Django settings for config project.
@@ -27,8 +28,8 @@ SECRET_KEY = os.environ.get("SECRET_KEY")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ["*"]
+CORS_ALLOW_ALL_ORIGINS = True
 
 # Application definition
 
@@ -46,12 +47,14 @@ INSTALLED_APPS = [
     "rest_framework",
     "djoser",
     "rest_framework_simplejwt.token_blacklist",
-    "martor"
+    "martor",
+    "django_cookiejwt",
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django_cookiejwt.middlewares.RefreshTokenMiddleware',
     "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -135,10 +138,19 @@ AUTH_USER_MODEL = "auth_app.User"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'django_cookiejwt.authentication.CookieJWTAuthentication',
     )
 }
 
-SIMPLE_JWT = {
-    'AUTH_HEADER_TYPES': ('JWT', )
-}
+
+COOKIEJWT_HTTPONLY = True
+# COOKIEJWT_SECURE = True TODO: IN PRODUCTION
+COOKIEJWT_SAMESITE = 'Lax'
+
+COOKIEJWT_ACCESS_MAX_AGE = timedelta(minutes=15).total_seconds
+COOKIEJWT_REFRESH_MAX_AGE = timedelta(days=30).total_seconds
+COOKIEJWT_PATH = "/"
+COOKIEJWT_DOMAIN = None
+
+CORS_ALLOW_CREDENTIALS = True
+# COOKIEJWT_SET_SESSION_COOKIE = True

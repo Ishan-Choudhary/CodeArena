@@ -7,3 +7,4 @@ djoser
 djangorestframework_simplejwt
 martor
 factory-boy
+django-cookiejwt
