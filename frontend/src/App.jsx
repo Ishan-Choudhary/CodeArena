@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import ProblemsPage from './pages/ProblemsPage';
+import RoomSettingsPage from './pages/RoomSettingsPage';
+import MockMode from './pages/MockMode';
 import './index.css';
 
 import { Toaster } from 'react-hot-toast';
@@ -33,6 +35,8 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<LoginPage isRegister={true} />} />
         <Route path="/problems" element={<ProblemsPage />} />
+        <Route path="/room-settings" element={<RoomSettingsPage />} />
+        <Route path="/room" element={<MockMode />} />
       </Routes>
     </Router>
   );

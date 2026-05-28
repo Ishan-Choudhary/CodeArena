@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "martor",
     "django_cookiejwt",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -140,7 +141,8 @@ AUTH_USER_MODEL = "auth_app.User"
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'django_cookiejwt.authentication.CookieJWTAuthentication',
-    )
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 
@@ -156,5 +158,14 @@ COOKIEJWT_DOMAIN = None
 CORS_ALLOW_CREDENTIALS = True
 # COOKIEJWT_SET_SESSION_COOKIE = True
 
+SPECTACULAR_SETTINGS = {
+    'TITLE': "CodeArena API",
+    'Description': "Codearena blah blah",
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+}
+
 #Daphne
 ASGI_APPLICATION = "config.asgi.application"
+

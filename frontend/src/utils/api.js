@@ -36,7 +36,7 @@ export async function fetchWithAuth(url, options = {}) {
   // If unauthorized, attempt to refresh the token using cookie-based refresh endpoint
   if (response.status === 401) {
     try {
-      const refreshResponse = await fetch('/api/auth/jwt/refresh/', {
+      const refreshResponse = await fetch('/api/jwt/refresh/', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

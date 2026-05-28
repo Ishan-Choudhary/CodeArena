@@ -22,7 +22,7 @@ class CreateRoom(CreateAPIView):
                 return code
 
     def perform_create(self, serializer):
-        room_type = self.request.data.get("mode")
+        room_type = self.request.data.get("testMode")
         if(room_type == Room.Mode.PRACTICE):
             status = Room.Status.ACTIVE
         else:
