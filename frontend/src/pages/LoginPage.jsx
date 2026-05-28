@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { fetchWithAuth } from '../utils/api';
+import { fetchWithAuth, getCookie } from '../utils/api';
 
 export default function LoginPage({ isRegister = false }) {
   const [email, setEmail] = useState('');
@@ -25,6 +25,7 @@ export default function LoginPage({ isRegister = false }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
         },
         credentials: 'include',
         body: JSON.stringify(body),
@@ -47,7 +48,10 @@ export default function LoginPage({ isRegister = false }) {
         // Automatically login after register
         const loginRes = await fetch('/api/jwt/token/', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCookie('csrftoken')
+          },
           credentials: 'include',
           body: JSON.stringify({ email, password }),
         });

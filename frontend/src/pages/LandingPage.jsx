@@ -19,7 +19,7 @@ export default function LandingPage() {
       {/* Background ambient light */}
       <div className="absolute top-[-20%] left-[20%] w-[60%] h-[60%] bg-accent/10 blur-[150px] rounded-full pointer-events-none"></div>
 
-      <header className="w-full max-w-[1200px] h-16 flex justify-between items-center px-6 border-b border-bg-border/50 bg-bg-base/50 backdrop-blur-md relative z-10 sticky top-0">
+      <header className="w-full max-w-[1200px] h-16 flex justify-between items-center px-6 border-b border-bg-border/50 bg-bg-base/50 backdrop-blur-md z-10 sticky top-0">
         <Link to="/" className="font-medium text-xl text-text-primary hover:text-text-primary transition-colors cursor-pointer">
           code<span className="text-accent">arena</span>
         </Link>

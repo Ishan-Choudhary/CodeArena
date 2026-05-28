@@ -34,6 +34,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -154,3 +155,6 @@ COOKIEJWT_DOMAIN = None
 
 CORS_ALLOW_CREDENTIALS = True
 # COOKIEJWT_SET_SESSION_COOKIE = True
+
+#Daphne
+ASGI_APPLICATION = "config.asgi.application"

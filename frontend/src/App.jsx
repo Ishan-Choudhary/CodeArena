@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { fetchCsrfToken } from './utils/api';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -9,6 +10,9 @@ import { Toaster } from 'react-hot-toast';
 
 function App() {
   useEffect(() => {
+    // Fetch the CSRF token from the backend
+    fetchCsrfToken();
+    
     // Clean up legacy tokens from before the cookie refactor
     localStorage.removeItem('access');
     localStorage.removeItem('refresh');

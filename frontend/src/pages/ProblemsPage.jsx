@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { LogOut, Play, Users, Search, Edit2 } from 'lucide-react';
-import { fetchWithAuth } from '../utils/api';
+import { fetchWithAuth, getCookie } from '../utils/api';
 import { useAuthStore } from '../store/authStore';
 
 export default function ProblemsPage() {
@@ -72,6 +72,7 @@ export default function ProblemsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken')
         },
         credentials: 'include'
       });
