@@ -156,7 +156,7 @@ COOKIEJWT_PATH = "/"
 COOKIEJWT_DOMAIN = None
 
 CORS_ALLOW_CREDENTIALS = True
-# COOKIEJWT_SET_SESSION_COOKIE = True
+COOKIEJWT_SET_SESSION_COOKIE = True
 
 SPECTACULAR_SETTINGS = {
     'TITLE': "CodeArena API",
@@ -166,6 +166,14 @@ SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True,
 }
 
+#Channels
 #Daphne
 ASGI_APPLICATION = "config.asgi.application"
-
+CHANNEL_LAYERS = {
+    "default":  {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)]
+        }
+    }
+}

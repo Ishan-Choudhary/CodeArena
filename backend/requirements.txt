@@ -1,6 +1,7 @@
 django
 djangorestframework
 channels[daphne]
+channels_redis
 django-cors-headers
 psycopg[binary,pool]
 djoser
