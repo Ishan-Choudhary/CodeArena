@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 
 from rest_framework.generics import CreateAPIView, UpdateAPIView, RetrieveAPIView
 from rest_framework.views import APIView, Response, status
+from rest_framework.permissions import IsAuthenticated
 from .models import Room
 from .serializers import RoomSerializer, ViewRoomSerializer
 from .permissions import IsHost, IsRoomJoinable
@@ -12,7 +13,8 @@ from .permissions import IsHost, IsRoomJoinable
 class CreateRoom(CreateAPIView):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
-
+    permission_classes = [IsAuthenticated]
+    
     def generate_code(self):
         chars = string.ascii_uppercase + string.digits
         while True:

@@ -1,27 +1,62 @@
 import json
 
-from asgiref.sync import async_to_sync
-from channels.generic.websocket import WebsocketConsumer
+from asgiref.sync import sync_to_async
+from channels.generic.websocket import AsyncWebsocketConsumer
+from apps.rooms.models import Room
 
-class RoomConsumer(WebsocketConsumer):
-    def connect(self):
+class RoomConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
         self.room_name= self.scope["url_route"]["kwargs"]["room_name"]
         self.room_group_name = f"room_{self.room_name}"
-        async_to_sync(self.channel_layer.group_add)(
-            self.room_group_name, self.channel_name
-        )
-        print(self.scope["user"])
-        self.accept()
-    
-    def disconnect(self, close_code):
-        async_to_sync(self.channel_layer.group_discard)(
+
+        await self.channel_layer.group_add(
             self.room_group_name, self.channel_name
         )
 
-    def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json["message"]
+        self.user = self.scope["user"]
 
-        async_to_sync(self.channel_layer.group_send)(
-            self.room_group_name, {"type": "", "message": message}
+        def check_perms():
+            try:
+                results = Room.objects.get(code=self.room_name)
+                if(results.participant == None):
+                    return "participant"
+                    
+                elif(results.host == self.user):
+                    return "host"
+                else:
+                    return "denied"
+            except Room.DoesNotExist:
+                return "denied"
+            
+        user_role = sync_to_async(check_perms)()
+
+        if user_role == "participant":
+            await self.channel_layer.group_send(self.room_group_name, {"type": "participant.joined"})
+            await self.accept()
+
+        elif user_role == "host":
+            await self.accept()
+
+        else:
+            await self.close()
+
+
+
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard(
+            self.room_group_name, self.channel_name
         )
+
+    # async def receive(self, text_data):
+    #     text_data_json = json.loads(text_data)
+    #     message = text_data_json["message"]
+
+    #     await self.channel_layer.group_send(
+    #         self.room_group_name, {"type": "", "message": message}
+    #     )
+
+    async def participant_joined(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "participant_joined",
+        }))

@@ -21,7 +21,7 @@ from drf_spectacular.views import (
     SpectacularAPIView
 )
 
-from .views import get_csrf_token
+from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -29,8 +29,9 @@ urlpatterns = [
     path("api/schema/swagger", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/jwt/", include("django_cookiejwt.urls")),
     re_path(r"^api/auth/", include("djoser.urls")),
-    path("api/csrf/", get_csrf_token),
+    path("api/csrf/", views.get_csrf_token),
     path("martor/", include("martor.urls")),
     path("api/problems/", include("apps.problems.urls")),
     path("api/rooms/", include("apps.rooms.urls")),
+    path("api/ping/", views.Ping.as_view())
 ]
