@@ -35,8 +35,22 @@ export async function fetchWithAuth(url, options = {}) {
 
   // EDIT by (Ishan-Choudhary): django-cookiejwt provides a RefreshToken MIDDLEWARE. So your token is automatically refreshed. If 401 is returned that means that token has also been blacklist. So you directly logout now
   if (response.status === 401) {
-        useAuthStore.getState().logout();
-        window.dispatchEvent(new Event('auth:unauthorized'));
+    
+    const retryheaders = {
+      ...headers,
+      'X-CSRFToken': getCookie("csrftoken")
+    }
+
+    response = await fetch(url, {
+      ...options,
+      headers: retryheaders,
+      credentials: "include"
+    })
+
+    if(response.status === 401) {
+      useAuthStore.getState().logout();
+      window.dispatchEvent(new Event('auth:unauthorized'));
+    }
   }
 
   return response;

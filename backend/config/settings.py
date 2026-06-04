@@ -145,23 +145,23 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-SIMPLE_JWT = {
-    'ROTATE_REFRESH_TOKEN': True,
-    'BLACKLIST_AFTER_ROTATION': True,
-}
+# SIMPLE_JWT = {
+#     'ROTATE_REFRESH_TOKEN': True,
+#     'BLACKLIST_AFTER_ROTATION': True,
+# }
 
 
 COOKIEJWT_HTTPONLY = True
-# COOKIEJWT_SECURE = True TODO: IN PRODUCTION
+COOKIEJWT_SECURE = False # TODO: IN PRODUCTION
 COOKIEJWT_SAMESITE = 'Lax'
 
-COOKIEJWT_ACCESS_MAX_AGE = timedelta(minutes=15).total_seconds
-COOKIEJWT_REFRESH_MAX_AGE = timedelta(days=30).total_seconds
+COOKIEJWT_ACCESS_MAX_AGE = timedelta(minutes=15).total_seconds()
+COOKIEJWT_REFRESH_MAX_AGE = timedelta(days=30).total_seconds()
 COOKIEJWT_PATH = "/"
 COOKIEJWT_DOMAIN = None
 
 CORS_ALLOW_CREDENTIALS = True
-# COOKIEJWT_SET_SESSION_COOKIE = True
+COOKIEJWT_SET_SESSION_COOKIE = True
 
 SPECTACULAR_SETTINGS = {
     'TITLE': "CodeArena API",
@@ -178,7 +178,7 @@ CHANNEL_LAYERS = {
     "default":  {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("redis", 6379)]
+            "hosts": [("redis", 6379)],
         }
     }
 }

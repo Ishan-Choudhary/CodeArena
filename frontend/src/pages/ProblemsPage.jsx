@@ -345,6 +345,12 @@ export default function ProblemsPage() {
                 >
                   <Play size={16} /> start practice
                 </button>
+                <button 
+                  onClick={() => navigate('/join-session')} 
+                  className="w-full p-3 bg-bg-elevated hover:bg-bg-border text-text-primary border border-bg-border rounded-lg text-sm font-medium cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <Users size={16} /> Join mock session
+                </button>
               </div>
             </div>
           ) : (

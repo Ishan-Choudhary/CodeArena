@@ -31,11 +31,9 @@ class JWTAuthCookieMiddleware:
         access_token = cookies.get("access_token")
 
         if access_token:
-            print("Access token found! Attempting to decode...")
             scope["user"] = await get_user_from_jwt(access_token)
-            print(f"Decode result: {scope['user']}")
         else:
-            print("NO ACCESS TOKEN FOUND in the string! Defaulting to AnonymousUser.")
+
             scope["user"] = AnonymousUser()
 
         return await self.inner(scope, receive, send)
