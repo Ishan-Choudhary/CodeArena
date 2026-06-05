@@ -17,37 +17,41 @@ export function useWebsocket(url)   {
                 });
     
                 if(res.ok)  {
-                    const wsConn = new WebSocket(url);
-                    wsRef.current = wsConn;
-    
-                    wsConn.onopen = (event) =>    {
-                        setConState(true);
-                        
-                        wsConn.heartbeat = setInterval(() =>    {
-                            if (wsConn.readyState === WebSocket.OPEN)   {
-                                wsConn.send(JSON.stringify({type: "ping"}))
-                            }
-                        }, 5000);
-                    }
-    
-                    wsConn.onmessage = (event) => {
-                        const data = event.data;
-                        const parseData = JSON.parse(data);
-                        
-                        if(parseData.type === "participant_joined") {
-                            setData(parseData);
-                        }
+                  const wsConn = new WebSocket(url);
+                  wsRef.current = wsConn;
 
-                        if(parseData.type === "room_ended")  {
-                            setData(parseData);
-                        }
-                    }
+                  wsConn.onopen = (event) =>    {
+                      setConState(true);
 
-                    wsConn.onclose = () =>  {
-                        clearInterval(wsConn.heartbeat);
-                        wsRef.current = null;
-                        setConState(false);
-                    };
+                      if(wsConn.readyState == WebSocket.open) {
+                        wsConn.send(JSON.stringify({type: "ping"}))
+                      }
+                      
+                      wsConn.heartbeat = setInterval(() =>    {
+                          if (wsConn.readyState === WebSocket.OPEN)   {
+                              wsConn.send(JSON.stringify({type: "ping"}))
+                          }
+                      }, 5000);
+                  }
+    
+                  wsConn.onmessage = (event) => {
+                      const data = event.data;
+                      const parseData = JSON.parse(data);
+                      
+                      if(parseData.type === "participant_joined") {
+                          setData(parseData);
+                      }
+
+                      if(parseData.type === "room_ended")  {
+                          setData(parseData);
+                      }
+                  }
+
+                  wsConn.onclose = () =>  {
+                      clearInterval(wsConn.heartbeat);
+                      wsRef.current = null;
+                      setConState(false);
+                  };
             
                 }
             }

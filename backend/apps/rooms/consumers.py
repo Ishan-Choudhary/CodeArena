@@ -80,4 +80,4 @@ class RoomConsumer(AsyncWebsocketConsumer):
             "type": "room_ended",
         }))
 
-        self.close()
+        await self.close()
