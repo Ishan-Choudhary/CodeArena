@@ -23,7 +23,7 @@ export function useWebsocket(url)   {
                   wsConn.onopen = (event) =>    {
                       setConState(true);
 
-                      if(wsConn.readyState == WebSocket.open) {
+                      if(wsConn.readyState == WebSocket.OPEN) {
                         wsConn.send(JSON.stringify({type: "ping"}))
                       }
                       

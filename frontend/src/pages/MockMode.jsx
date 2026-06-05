@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import {toast} from "react-hot-toast";
+import Markdown from "react-markdown"
+import Editor from "@monaco-editor/react";
+import * as Y from "yjs";
+import {WebsocketProvider} from "y-websocket";
+import {MonacoBinding} from "y-monaco";
+
 import { useWebsocket } from "../hooks/websockets";
 import { fetchWithAuth } from "../utils/api";
-import {toast} from "react-hot-toast";
+
 
 const MockMode = () =>   {
     const navigator = useNavigate();
@@ -12,6 +19,27 @@ const MockMode = () =>   {
 
     const {data, sendMessage} = useWebsocket(`ws://127.0.0.1:8000/ws/room/${roomDetails?.code}/`)
     const [loading, setLoading] = useState(false);
+
+    const editorRef = useRef(null);
+
+    const yDocRef = useRef(null);
+    const providerRef = useRef(null);
+    const bindingRef = useRef(null);
+    
+    useEffect(() => {        
+        const yDoc = new Y.Doc();
+        const provider = new WebsocketProvider("ws://127.0.0.1:1234", roomDetails?.code, yDoc);
+
+        yDocRef.current = yDoc;
+        providerRef.current = provider;
+
+        return () =>    {
+            if(bindingRef.current) bindingRef.current.destroy();
+            provider.destroy();
+            yDoc.destroy();
+        }
+
+    }, [roomDetails?.code]);
 
     useEffect(() => {
         if(data?.type === "room_ended") {
@@ -41,6 +69,44 @@ const MockMode = () =>   {
         }
     }
 
+    const handleEditorMount = (editor, monaco) =>   {
+        editorRef.current = editor;
+        
+        const yDoc = yDocRef.current;
+        const provider = providerRef.current;
+
+        if(!yDoc || !provider) return;
+
+        const type = yDoc.getText("monaco");
+        
+        const setupInitialView = () =>  {
+            if(type.toString().length === 0)    {
+                type.insert(0, problem?.starter_code?.[roomDetails?.language.toLowerCase()]);
+            }
+        };
+
+        if(provider.synced) {
+            setupInitialView();
+        }
+        else    {
+            provider.once("sync", setupInitialView);
+        }
+        
+        bindingRef.current = new MonacoBinding(
+            type, 
+            editor.getModel(),
+            new Set([editor]),
+            provider.awareness
+        )
+        
+        return () =>    {
+            if(bindingRef.current)  {
+                bindingRef.current.destroy();
+                bindingRef.current = null;
+            }
+        }
+    }
+
     return (
         <div className="h-screen flex flex-col bg-bg-base overflow-hidden relative">
             <div className={`absolute z-50 h-screen w-full  flex-col items-center justify-center overflow-hidden bg-bg-base/50 ${data?.type === "participant_joined" ? "hidden" : "flex"}`}>
@@ -52,8 +118,7 @@ const MockMode = () =>   {
                                     key={`${curr}-${i}`}
                                     className="bg-accent-dark p-4 rounded-md inline-block font-mono text-center"
                                 >
-                                    {curr}
-                                </span>
+                                    {curr}</span>
                             ))
                         }
                     </div>
@@ -64,17 +129,30 @@ const MockMode = () =>   {
             <header className="h-16 flex justify-between items-center px-6 bg-bg-surface/80 backdrop-blur-md border-b border-bg-border z-40 sticky top-0 font-bold">
                 <p className="font-medium text-xl text-text-primary hover:text-text-primary transition-colors cursor-pointer">code<span className="text-accent">arena</span></p>
                 <div className="flex gap-4 text-sm items-center">
-                     <span className="bg-accent-dark/15 text-accent border-1 border-accent p-2 rounded-2xl">{roomDetails?.testMode.toLowerCase()} mode</span>
+                     <span className="bg-accent-dark/15 text-accent border border-accent p-2 rounded-2xl">{roomDetails?.testMode.toLowerCase()} mode</span>
                      <span className="text-text-secondary">{problem?.title} &middot; {problem?.difficulty.toLowerCase()}</span>
                 </div>
                 <div className="flex gap-4 text-sm items-center">
                     <button className="text-text-secondary border-1 px-4 py-2 rounded-xl border-bg-border" onClick={handleEndSesh}>end session</button>
                 </div>
             </header>
-            <div className="flex">
-                <div className="w-[220px]"></div>
-                <div className="flex-1"></div>
-                <div className="w-[180px]"></div>
+            <div className="flex h-full">
+                <div className="w-[420px] px-6 pt-2 border-2 border-bg-border">
+                    <p className="text-text-secondary font-bold">PROBLEM</p>
+                    <h1 className="text-text-primary text-2xl font-bold mb-2">{problem?.title}</h1>
+                    <div className="w-full h-fit min-h-[100px] max-h-[600px] resize-y overflow-y-auto overflow-x-hidden border border-bg-border p-4 box-border ">
+                        <Markdown>{problem?.description}</Markdown>
+                    </div>
+                </div>
+                <div className="flex-1 pt-2 border-2 border-bg-border">
+                    <Editor
+                        height="60vh"
+                        language={roomDetails?.language.toLowerCase()}
+                        theme="vs-dark"
+                        onMount={handleEditorMount}
+                    />
+                </div>
+                <div className="w-[350px]"></div>
             </div>
         </div>
     )
