@@ -11,11 +11,13 @@ def check_perms(room_name, user):
         if not room:
             return "denied", False
         
-        participant_exists = (room.participant is not None)
+
         if(room.host == user):
-            return "host", participant_exists
+            partner_name = room.participant.username if room.participant else None
+            return "host", partner_name
         elif(room.participant == user):
-            return "participant", True  
+            partner_name = room.host.username if room.host else None
+            return "participant", partner_name
         else:
             return "denied", False
     except Room.DoesNotExist:
@@ -27,7 +29,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f"room_{self.room_name}"
         self.user = self.scope["user"]
 
-        user_role, participant_exists = await check_perms(self.room_name, self.user)
+        user_role, partner_name = await check_perms(self.room_name, self.user)
 
         if(user_role == "denied"):
             await self.close()
@@ -38,15 +40,14 @@ class RoomConsumer(AsyncWebsocketConsumer):
             self.room_group_name, self.channel_name
         )
 
+        if partner_name:
+            await self.send(text_data=json.dumps({
+                "type": "participant_joined",
+                "user": partner_name
+            }))
 
         if user_role == "participant":
-            await self.channel_layer.group_send(self.room_group_name, {"type": "participant.joined"})
-
-        elif user_role == "host":
-            if participant_exists:
-                await self.send(text_data=json.dumps({
-                    "type": "participant_joined"
-                }))
+            await self.channel_layer.group_send(self.room_group_name, {"type": "participant.joined", "sender_channel_name": self.channel_name, "user": self.user.username})
 
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
@@ -68,8 +69,12 @@ class RoomConsumer(AsyncWebsocketConsumer):
             pass
 
     async def participant_joined(self, event):
+        if(event.get("sender_channel_name") == self.channel_name):
+            return
+        
         await self.send(text_data=json.dumps({
             "type": "participant_joined",
+            "user": event["user"]
         }))
 
     async def heartbeat_pulse(self, event):

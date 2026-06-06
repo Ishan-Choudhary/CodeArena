@@ -38,3 +38,39 @@
     padding: 0;
   }
 }
+
+.yRemoteSelectionHead {
+  position: absolute;
+  border-left: 2px solid #9fed2b !important;
+  border-right: 6px solid transparent !important;
+  background-clip: padding-box;
+  pointer-events: auto !important;
+  z-index: 10;
+  height: 100%;
+}
+
+.yRemoteSelection {
+  background-color: rgba(159, 237, 43, 0.3) !important;
+}
+
+.yRemoteSelectionHead::after {
+  content: var(--partner-name, "Remote User") !important; 
+  position: absolute;
+  top: -1.4em;
+  left: -2px;
+  background: #9fed2b;
+  color: #1a1a1a;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  opacity: 0; 
+  transition: opacity 0.15s ease;
+  pointer-events: none;
+}
+
+.yRemoteSelectionHead:hover::after {
+  opacity: 1;
+}

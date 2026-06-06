@@ -4,9 +4,6 @@ import {toast} from "react-hot-toast";
 
 import Markdown from "react-markdown"
 import Editor from "@monaco-editor/react";
-import * as Y from "yjs";
-import {WebsocketProvider} from "y-websocket";
-import {MonacoBinding} from "y-monaco";
 
 import { useWebsocket } from "../hooks/websockets";
 import { fetchWithAuth } from "../utils/api";
@@ -19,14 +16,10 @@ const MockMode = () =>   {
     const roomDetails = location.state?.roomDetails;
     const problem = location.state?.problem;
 
-    const {data, sendMessage} = useWebsocket(`ws://127.0.0.1:8000/ws/room/${roomDetails?.code}/`)
+    // const {data, sendMessage} = useWebsocket(`ws://127.0.0.1:8000/ws/room/${roomDetails?.code}/`)
     const [loading, setLoading] = useState(false);
 
     const editorRef = useRef(null);
-
-    const yDocRef = useRef(null);
-    const providerRef = useRef(null);
-    const bindingRef = useRef(null);
     
     const username = useAuthStore(state => state.username)
 
