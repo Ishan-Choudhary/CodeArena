@@ -16,14 +16,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, re_path, include
-from .views import get_csrf_token
+from drf_spectacular.views import (
+    SpectacularSwaggerView,
+    SpectacularAPIView
+)
+
+from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path("api/schema/swagger", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/jwt/", include("django_cookiejwt.urls")),
     re_path(r"^api/auth/", include("djoser.urls")),
-    path("api/csrf/", get_csrf_token),
+    path("api/csrf/", views.get_csrf_token),
     path("martor/", include("martor.urls")),
     path("api/problems/", include("apps.problems.urls")),
     path("api/rooms/", include("apps.rooms.urls")),
+    path("api/ping/", views.Ping.as_view())
 ]

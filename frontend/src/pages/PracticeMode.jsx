@@ -1,0 +1,207 @@
+import { useEffect, useState, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {toast} from "react-hot-toast";
+
+import Markdown from "react-markdown"
+import Editor from "@monaco-editor/react";
+
+import { useWebsocket } from "../hooks/websockets";
+import { fetchWithAuth } from "../utils/api";
+import { useAuthStore } from "../store/authStore";
+
+
+const MockMode = () =>   {
+    const navigator = useNavigate();
+    const location = useLocation();
+    const roomDetails = location.state?.roomDetails;
+    const problem = location.state?.problem;
+
+    // const {data, sendMessage} = useWebsocket(`ws://127.0.0.1:8000/ws/room/${roomDetails?.code}/`)
+    const [loading, setLoading] = useState(false);
+
+    const editorRef = useRef(null);
+    
+    const username = useAuthStore(state => state.username)
+
+    useEffect(() => {        
+        const yDoc = new Y.Doc();
+        const provider = new WebsocketProvider("ws://127.0.0.1:1234", roomDetails?.code, yDoc);
+
+        yDocRef.current = yDoc;
+        providerRef.current = provider;
+
+        if(editorRef.current)   {
+            setupBinding(editorRef.current, yDoc, provider)
+        }
+
+
+        return () =>    {
+            if(bindingRef.current) {
+                bindingRef.current.destroy();
+                bindingRef.current = null;
+            }
+            provider.destroy();
+            yDoc.destroy();
+        }
+
+    }, [roomDetails?.code]);
+
+    useEffect(() => {
+        if(data?.type === "participant_joined") {
+            document.documentElement.style.setProperty("--partner-name", `"${data?.user}"`)
+        }
+        if(data?.type === "room_ended") {
+            toast.success("The session has been ended.");
+            navigator("/");
+        }
+    }, [data, navigator]);
+
+    const handleEndSesh = async () => {
+        if(loading) return;
+        setLoading(true);
+        try {
+            const res = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomDetails?.code}/end/`, {
+                method: "POST"
+            })
+    
+            if(!res.ok)    {
+                const response = await res.json();
+                toast.error(response.detail || "Failed to end session");
+            }
+        }
+        catch(error)    {
+            console.error(error);
+            toast.error("Network error ending session");
+        } finally   {
+            setLoading(false);
+        }
+    }
+
+    const setupBinding = (editor, yDoc, provider) =>    {
+        if(bindingRef.current) return;
+        
+        const model = editor.getModel()
+        if(!model)  return;
+
+        provider.awareness.setLocalStateField("user",{
+            name: username,
+            color: "#9fed2b",
+        })
+
+        const type = yDoc.getText("monaco");
+        
+        const setupInitialView = () =>  {
+            if(type.toString().length === 0)    {
+                type.insert(0, problem?.starter_code?.[roomDetails?.language.toLowerCase()]);
+            }
+
+            editor.layout();
+
+            setTimeout(() => {
+            if (editor && editor.getModel()) {
+                editor.focus();
+                editor.setPosition({ lineNumber: 1, column: 1 });
+            }
+        }, 100);
+        };
+
+        if(provider.synced) {
+            setupInitialView();
+        }
+        else    {
+            provider.once("sync", setupInitialView);
+        }
+        
+        bindingRef.current = new MonacoBinding(
+            type, 
+            model,
+            new Set([editor]),
+            provider.awareness
+        )
+    }
+
+    const handleEditorMount = (editor, monaco) =>   {
+        editorRef.current = editor;
+
+        const model = editor.getModel();
+
+        if(model)   {
+            model.setEOL(monaco.editor.EndOfLineSequence.LF);
+        }
+        
+        const yDoc = yDocRef.current;
+        const provider = providerRef.current;
+
+        if(!yDoc || !provider) return;
+        
+        if(yDoc && provider)    {
+            setupBinding(editor, yDoc, provider);
+        }
+        
+    }
+
+    console.log(username);
+
+
+    return (
+        <div className="h-screen flex flex-col bg-bg-base overflow-hidden relative">
+            <div className={`absolute z-50 h-screen w-full  flex-col items-center justify-center overflow-hidden bg-bg-base/50 ${data?.type === "participant_joined" ? "hidden" : "flex"}`}>
+                <div className="box-content bg-accent rounded-xl p-4 text-center">
+                    <div className="flex items-center gap-2 h-auto">
+                        {
+                            roomDetails?.code.split("").map((curr, i) => (
+                                <span 
+                                    key={`${curr}-${i}`}
+                                    className="bg-accent-dark p-4 rounded-md inline-block font-mono text-center"
+                                >
+                                    {curr}</span>
+                            ))
+                        }
+                    </div>
+                    <h1 className="mt-2 font-bold">CODE</h1>
+                    <p>Waiting for Participant</p>
+                </div>
+            </div>
+            <header className="h-16 flex justify-between items-center px-6 bg-bg-surface/80 backdrop-blur-md border-b border-bg-border z-40 sticky top-0 font-bold">
+                <p className="font-medium text-xl text-text-primary hover:text-text-primary transition-colors cursor-pointer">code<span className="text-accent">arena</span></p>
+                <div className="flex gap-4 text-sm items-center">
+                     <span className="bg-accent-dark/15 text-accent border border-accent p-2 rounded-2xl">{roomDetails?.testMode.toLowerCase()} mode</span>
+                     <span className="text-text-secondary">{problem?.title} &middot; {problem?.difficulty.toLowerCase()}</span>
+                </div>
+                <div className="flex gap-4 text-sm items-center">
+                    <button className="text-text-secondary border-1 px-4 py-2 rounded-xl border-bg-border" onClick={handleEndSesh}>end session</button>
+                </div>
+            </header>
+            <div className="flex h-full">
+                <div className="w-[420px] px-6 pt-2 border-2 border-bg-border">
+                    <p className="text-text-secondary font-bold">PROBLEM</p>
+                    <h1 className="text-text-primary text-2xl font-bold mb-2">{problem?.title}</h1>
+                    <div className="w-full h-fit min-h-[100px] max-h-[600px] resize-y overflow-y-auto overflow-x-hidden border border-bg-border p-4 box-border ">
+                        <Markdown>{problem?.description}</Markdown>
+                    </div>
+                </div>
+                <div className="flex-1 pt-2 border-2 border-bg-border px-6">
+                    <div className="flex justify-between items-end font-bold text-text-secondary mb-5 mt-2">
+                        <p>EDITOR</p>
+                        <button className="bg-accent text-text-primary px-2 py-2 rounded-xl">SUBMIT CODE</button>
+                    </div>
+                    <Editor
+                        height="50vh"
+                        language={roomDetails?.language.toLowerCase()}
+                        theme="vs-dark"
+                        onMount={handleEditorMount}
+                    />
+                    <div>
+                        <p className="text-text-secondary font-bold mt-2">CHAT</p>
+                        <div>
+
+                        </div>
+                    </div>
+                </div>
+                <div className="w-[350px]"></div>
+            </div>
+        </div>
+    )
+}
+
+export default MockMode;

@@ -86,13 +86,7 @@ export default function ProblemsPage() {
 
   const handleStartPractice = () => {
     if (selectedProblem) {
-      toast.success(`Starting practice for ${selectedProblem.title}`);
-    }
-  };
-
-  const handleStartMock = () => {
-    if (selectedProblem) {
-      toast.success(`Starting mock session for ${selectedProblem.title}`);
+      navigate('/room-settings', { state: { problem: selectedProblem } });
     }
   };
 
@@ -352,10 +346,10 @@ export default function ProblemsPage() {
                   <Play size={16} /> start practice
                 </button>
                 <button 
-                  onClick={handleStartMock} 
-                  className="w-full p-3 bg-transparent hover:bg-bg-elevated text-text-secondary border border-bg-border rounded-lg text-sm font-medium cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                  onClick={() => navigate('/join-session')} 
+                  className="w-full p-3 bg-bg-elevated hover:bg-bg-border text-text-primary border border-bg-border rounded-lg text-sm font-medium cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  <Users size={16} /> start mock session
+                  <Users size={16} /> Join mock session
                 </button>
               </div>
             </div>

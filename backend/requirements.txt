@@ -1,6 +1,7 @@
 django
 djangorestframework
 channels[daphne]
+channels_redis
 django-cors-headers
 psycopg[binary,pool]
 djoser
@@ -8,3 +9,5 @@ djangorestframework_simplejwt
 martor
 factory-boy
 django-cookiejwt
+drf-spectacular
+drf-spectacular[swagger]

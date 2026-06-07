@@ -10,4 +10,4 @@ class RoomSerializer(ModelSerializer):
 class ViewRoomSerializer(ModelSerializer):
     class Meta:
         model = Room
-        fields = ["code", "host", "problem", "language", "status"]
+        fields = ["code", "host", "problem", "language", "status", "testMode"]

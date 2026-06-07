@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "martor",
     "django_cookiejwt",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -140,21 +141,54 @@ AUTH_USER_MODEL = "auth_app.User"
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'django_cookiejwt.authentication.CookieJWTAuthentication',
-    )
+    ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
+
+# SIMPLE_JWT = {
+#     'ROTATE_REFRESH_TOKEN': True,
+#     'BLACKLIST_AFTER_ROTATION': True,
+# }
 
 
 COOKIEJWT_HTTPONLY = True
-# COOKIEJWT_SECURE = True TODO: IN PRODUCTION
+COOKIEJWT_SECURE = False # TODO: IN PRODUCTION
 COOKIEJWT_SAMESITE = 'Lax'
 
-COOKIEJWT_ACCESS_MAX_AGE = timedelta(minutes=15).total_seconds
-COOKIEJWT_REFRESH_MAX_AGE = timedelta(days=30).total_seconds
+COOKIEJWT_ACCESS_MAX_AGE = timedelta(minutes=15).total_seconds()
+COOKIEJWT_REFRESH_MAX_AGE = timedelta(days=30).total_seconds()
 COOKIEJWT_PATH = "/"
 COOKIEJWT_DOMAIN = None
 
 CORS_ALLOW_CREDENTIALS = True
-# COOKIEJWT_SET_SESSION_COOKIE = True
+COOKIEJWT_SET_SESSION_COOKIE = True
 
+SPECTACULAR_SETTINGS = {
+    'TITLE': "CodeArena API",
+    'Description': "Codearena blah blah",
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+}
+
+#Channels
 #Daphne
 ASGI_APPLICATION = "config.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [
+                {
+                    "host": "redis",
+                    "port": 6379,
+                    "socket_keepalive": True,
+                    "health_check_interval": 30,
+                    "socket_timeout": 3600,
+                    "socket_connect_timeout": 3600,
+                }
+            ],
+        },
+    },
+}

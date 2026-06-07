@@ -5,14 +5,19 @@ from django.shortcuts import get_object_or_404
 
 from rest_framework.generics import CreateAPIView, UpdateAPIView, RetrieveAPIView
 from rest_framework.views import APIView, Response, status
+from rest_framework.permissions import IsAuthenticated
 from .models import Room
 from .serializers import RoomSerializer, ViewRoomSerializer
 from .permissions import IsHost, IsRoomJoinable
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 class CreateRoom(CreateAPIView):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
-
+    permission_classes = [IsAuthenticated]
+    
     def generate_code(self):
         chars = string.ascii_uppercase + string.digits
         while True:
@@ -22,7 +27,7 @@ class CreateRoom(CreateAPIView):
                 return code
 
     def perform_create(self, serializer):
-        room_type = self.request.data.get("mode")
+        room_type = self.request.data.get("testMode")
         if(room_type == Room.Mode.PRACTICE):
             status = Room.Status.ACTIVE
         else:
@@ -35,7 +40,7 @@ class RoomInfo(RetrieveAPIView):
     lookup_field = "code"
 
 class JoinRoom(APIView):
-    permission_classes = [IsRoomJoinable]
+    permission_classes = [IsAuthenticated, IsRoomJoinable]
 
     def post(self, request, code):
         room = get_object_or_404(Room, code=code)
@@ -47,7 +52,7 @@ class JoinRoom(APIView):
         return Response({"message": "Joined successfully"}, status=status.HTTP_200_OK)
 
 class EndRoom(APIView):
-    permission_classes = [IsHost]
+    permission_classes = [IsAuthenticated, IsHost]
 
     def post(self, request, code):
         room = get_object_or_404(Room, code=code)
@@ -55,5 +60,11 @@ class EndRoom(APIView):
         room.status = Room.Status.ENDED
         room.ended_at = timezone.now()
         room.save()
+
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"room_{room.code}",
+            {"type": "room.ended"}
+        )
 
         return Response({"message": "Room ended"}, status=status.HTTP_200_OK)

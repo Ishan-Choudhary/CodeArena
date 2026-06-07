@@ -26,7 +26,7 @@ class Room(models.Model):
     problem = models.ForeignKey(to=Problem, on_delete=models.CASCADE)
     host = models.ForeignKey(to=User, null=True, blank=True, on_delete=models.SET_NULL, related_name = "hosted_rooms")
     participant = models.ForeignKey(to=User, null=True, blank=True, on_delete=models.SET_NULL, related_name = "participated_rooms")
-    mode = models.CharField(choices=Mode, default=Mode.PRACTICE)
+    testMode = models.CharField(choices=Mode, default=Mode.PRACTICE)
     status = models.CharField(choices=Status, default=Status.WAITING)
     language = models.CharField(choices=Language, default=Language.PYTHON)
     created_at = models.DateTimeField(auto_now_add=True)
