@@ -1,55 +1,67 @@
-def main(test_cases, code):
+def run_code(test_cases, code):
     import docker
     import json
-
-    client = docker.from_env()
-
-    container = client.containers.run(
-        "python:3.14-slim", 
-        detach=True,
-        tty=True,
-        network_disabled=True,
-        mem_limit="256m",
-        read_only=True,
-        user="1000:1000",
-        pids_limit=50,
-        security_opt=["no-new-privileges"],
-        cap_drop=["ALL"]
-        )
-
+    import subprocess
 
     code_content = f"""import json
+import time
+import io
+import traceback
+from contextlib import redirect_stdout
 
-    {code}                
+{code}                
 
-    test_cases = {test_cases}
+test_cases = {test_cases}
 
-    results = []
-    for case in test_cases:
-        try:
-            output = main(**case["input"])
-            results.append({"input": case["input"], "passed": sorted(output) == sorted(case["expected"]), "output": output, "expected": case["expected"]})
+results = []
+for case in test_cases:
+    
+        f = io.StringIO()
 
-        except Exception as e:
-            results.append({"input": case["input"], "passed": False, "error": str(e)})
-            break
+        with redirect_stdout(f):
+            try:
+                start_time = time.perf_counter_ns()
+                output = main(**case["input"])
+                end_time = time.perf_counter_ns()
 
-    return json.dumps(result)
+                user_stdout = f.getvalue()
+                execution_time = (end_time - start_time) // 1000000
+                results.append({"input": case["input"], "passed": sorted(output) == sorted(case["expected"]), "output": output, "expected": case["expected"], "execution_ms": execution_time, "stdout": user_stdout})
+
+            except Exception as e:
+                user_stdout = f.getvalue()
+                error_trace = traceback.format_exc()
+                results.append({"input": case["input"], "passed": False, "error": str(e), "traceback": error_trace, "stdout": user_stdout})
+                break
+
+print(json.dumps(results))
     """
 
-
-    code_content = code_content.replace("'", "'\\''")
-
+    command = [
+        "docker", "run",
+        "-i",
+        "--rm",
+        "--network", "none",
+        "--memory", "256m",
+        "--cpus", "1.0",
+        "--read-only",
+        "--user", "1000:1000",
+        "--security-opt", "no-new-privileges",
+        "--cap-drop", "ALL",
+        "python:3.14-slim",
+        "timeout", "5s",
+        "python3", "-"
+    ]
+    
     try:
-        result = container.exec_run(["bash", "-c", f"cat << 'EOF' | timeout 5s python3 -\n{code_content}\nEOF"])    
-        raw_output = result[1].decode("utf-8").strip()
-        if raw_output:
-            print(raw_output)
-        else:
-            print(json.dumps([{"error": "Execution timed out or failed to produce output"}]))
-    finally:
-        container.stop()
-        container.remove()
+        result = subprocess.run(command, input=code_content, capture_output=True, text=True, timeout=7)
 
-if __name__ == "__main__":
-    main()
+        if result.returncode == 124:
+            return json.dumps([{"error": "Time Limit Exceeded", "is_timeout": True}])
+        elif result.returncode != 0:
+            return json.dumps([{"error": "Compile/Syntax Error", "details": result.stderr.strip(), "is_timeout": False}])
+            
+        return result.stdout.strip()
+    except subprocess.TimeoutExpired:
+        return json.dumps([{"error": "Host execution timed out", "is_timeout": False}])
+

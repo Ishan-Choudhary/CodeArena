@@ -11,3 +11,4 @@ factory-boy
 django-cookiejwt
 drf-spectacular
 drf-spectacular[swagger]
+docker
