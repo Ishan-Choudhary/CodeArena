@@ -18,7 +18,6 @@ class Submission(models.Model):
     user = models.ForeignKey(to=User, on_delete=models.SET_NULL, null=True)
     code = models.TextField()
     stdout = models.TextField(blank=True)
-    stderr = models.TextField(blank=True)
     status = models.CharField(choices=Status, default=Status.ERROR)
     execution_time = models.IntegerField(null = True, blank = True)
     submitted_at = models.DateTimeField(auto_now_add=True)

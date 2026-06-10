@@ -2,6 +2,8 @@ import json
 from rest_framework.views import APIView, Response, status
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 from .models import Submission
 from .serializers import SubmissionSerializer
@@ -18,7 +20,7 @@ class SubmitView(APIView):
         
         try:
             roomDetails = get_object_or_404(Room.objects.select_related("problem"), code=code)
-            result = json.loads(run_code(roomDetails.problem.test_cases, code=obj.validated_data["code"]))
+            result = json.loads(run_code(roomDetails.problem.test_cases, obj.validated_data["code"], roomDetails.problem.order_matters))
             err_type = ""
 
             if "error" in result[0] and "input" not in result[0]:
@@ -68,4 +70,5 @@ class SubmitView(APIView):
 
 
         except Exception as E:
+            print(E)
             return Response({"message": "Error processing request"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

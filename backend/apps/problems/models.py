@@ -21,6 +21,7 @@ class Problem(models.Model):
     test_cases = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=100, default="")
+    order_matters = models.BooleanField(default=True)
 
     def __str__(self):
         return self.title

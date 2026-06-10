@@ -1,4 +1,4 @@
-def run_code(test_cases, code):
+def run_code(test_cases, code, order_matters):
     import docker
     import json
     import subprocess
@@ -10,7 +10,7 @@ import traceback
 from contextlib import redirect_stdout
 
 {code}                
-
+order_matters = {order_matters}
 test_cases = {test_cases}
 
 results = []
@@ -26,12 +26,12 @@ for case in test_cases:
 
                 user_stdout = f.getvalue()
                 execution_time = (end_time - start_time) // 1000000
-                results.append({"input": case["input"], "passed": sorted(output) == sorted(case["expected"]), "output": output, "expected": case["expected"], "execution_ms": execution_time, "stdout": user_stdout})
+                results.append({{"input": case["input"], "passed": output == case["expected"] if order_matters else sorted(output) == sorted(case["expected"]), "output": output, "expected": case["expected"], "execution_ms": execution_time, "stdout": user_stdout}})
 
             except Exception as e:
                 user_stdout = f.getvalue()
                 error_trace = traceback.format_exc()
-                results.append({"input": case["input"], "passed": False, "error": str(e), "traceback": error_trace, "stdout": user_stdout})
+                results.append({{"input": case["input"], "passed": False, "error": str(e), "traceback": error_trace, "stdout": user_stdout}})
                 break
 
 print(json.dumps(results))
@@ -48,6 +48,7 @@ print(json.dumps(results))
         "--user", "1000:1000",
         "--security-opt", "no-new-privileges",
         "--cap-drop", "ALL",
+        "--pids-limit", "64",
         "python:3.14-slim",
         "timeout", "5s",
         "python3", "-"

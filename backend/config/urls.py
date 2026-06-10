@@ -33,5 +33,6 @@ urlpatterns = [
     path("martor/", include("martor.urls")),
     path("api/problems/", include("apps.problems.urls")),
     path("api/rooms/", include("apps.rooms.urls")),
-    path("api/ping/", views.Ping.as_view())
+    path("api/ping/", views.Ping.as_view()),
+    path("api/submit/", include("apps.executor.urls"))
 ]
