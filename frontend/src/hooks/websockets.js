@@ -6,6 +6,10 @@ export function useWebsocket(url)   {
     const [conState, setConState] = useState(false);
     const [data, setData] = useState(null);
     const wsRef = useRef(null);
+    const heartBeatRef = useRef(null);
+    const reconnCountRef = useRef(0);
+    const timerRef = useRef(null);
+    const missedPongRef = useRef(0);
 
     useEffect(() => {
         
@@ -23,46 +27,84 @@ export function useWebsocket(url)   {
                   wsConn.onopen = (event) =>    {
                       setConState(true);
 
-                      if(wsConn.readyState == WebSocket.OPEN) {
-                        wsConn.send(JSON.stringify({type: "ping"}))
+                      if(wsConn.readyState === WebSocket.OPEN) {
+                        reconnCountRef.current = 0;
+                        missedPongRef.current = 0;
+
+                        wsRef.current.send(JSON.stringify({type: "ping"}))
+                        missedPongRef.current += 1;
                       }
                       
-                      wsConn.heartbeat = setInterval(() =>    {
-                          if (wsConn.readyState === WebSocket.OPEN)   {
-                              wsConn.send(JSON.stringify({type: "ping"}))
+                      heartBeatRef.current = setInterval(() =>    {
+                        if (wsConn.readyState === WebSocket.OPEN)   {
+                            if(missedPongRef.current >= 2)  {
+                                wsRef.current.close();
+                            }
+                            else    {
+                                missedPongRef.current += 1
+                                wsRef.current.send(JSON.stringify({type: "ping"}))
+                            }
                           }
-                      }, 5000);
+                      }, 30000);
                   }
     
                   wsConn.onmessage = (event) => {
-                      const data = event.data;
-                      const parseData = JSON.parse(data);
-                      
-                      if(parseData.type === "participant_joined") {
-                          setData(parseData);
-                      }
-
-                      if(parseData.type === "room_ended")  {
-                          setData(parseData);
-                      }
+                    const data = event.data;
+                    const parseData = JSON.parse(data);
+                    
+                    if(parseData.type === "participant_joined") {
+                        setData(parseData);
+                    }
+                    if(parseData.type === "pong") {
+                        missedPongRef.current = 0;
+                    }
                   }
 
-                  wsConn.onclose = () =>  {
-                      clearInterval(wsConn.heartbeat);
-                      wsRef.current = null;
-                      setConState(false);
+                  wsConn.onclose = (event) =>  {
+                    clearInterval(heartBeatRef.current);
+                    setConState(false);
+
+                    if(event.code === 4000)   {
+                        setData({type: "room_ended"});
+                        wsRef.current = null;
+                    }
+                    else    {
+                        let waitTime = Math.min( (2 ** reconnCountRef.current) * 1000, 10000);
+                        
+                        if(waitTime < 10 * 1000)   {
+                            reconnCountRef.current += 1;
+                        }
+                        timerRef.current = setTimeout(() => {
+                            initiateConn(url);
+
+                        }, waitTime);
+
+                    }
                   };
             
                 }
             }
             catch(e)   {
                 console.error(e);
+                setConState(false);
+
+                let waitTime = Math.min( (2 ** reconnCountRef.current) * 1000, 10000);
+                
+                if(waitTime < 10 * 1000)   {
+                    reconnCountRef.current += 1;
+                }
+                timerRef.current = setTimeout(() => {
+                    initiateConn(url);
+
+                }, waitTime);
             }             
         }
        
         initiateConn(url);
 
         return () => {
+            clearTimeout(timerRef.current);
+            clearInterval(heartBeatRef.current);
             if(wsRef.current)   {
                 wsRef.current.close();
             }
@@ -70,5 +112,9 @@ export function useWebsocket(url)   {
 
     }, [url]);
 
-    return {data, sendMessage: (msg) => {}}
+    return {data, sendMessage: (details, eventType) => {
+            if(wsRef.current && wsRef.current.readyState === WebSocket.OPEN)   {
+                wsRef.current.send(JSON.stringify({data: details, type: eventType}))
+            }
+    }}
 }

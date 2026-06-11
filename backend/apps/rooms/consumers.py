@@ -59,10 +59,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
             text_data_json = json.loads(text_data)
             
             if(text_data_json.get("type") == "ping"):
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {"type": "heartbeat.pulse"}
-                )
+                await self.send(text_data=json.dumps({"type": "pong"}))
                 return
 
         except json.JSONDecodeError:
@@ -77,12 +74,5 @@ class RoomConsumer(AsyncWebsocketConsumer):
             "user": event["user"]
         }))
 
-    async def heartbeat_pulse(self, event):
-        pass
-
     async def room_ended(self, event):
-        await self.send(text_data=json.dumps({
-            "type": "room_ended",
-        }))
-
-        await self.close()
+        await self.close(code=4000)

@@ -174,10 +174,7 @@
         }
 
         const handleSubmit = async () =>   {
-            // const resp = fetchWithAuth("http://127.0.0.1:8000/api", {
-            //     method: "POST",
 
-            // })
 
             const codeContent = yTextRef.current.toString();
             console.log(codeContent);
