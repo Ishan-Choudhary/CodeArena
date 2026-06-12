@@ -52,11 +52,11 @@ export function useWebsocket(url)   {
                     const data = event.data;
                     const parseData = JSON.parse(data);
                     
-                    if(parseData.type === "participant_joined") {
-                        setData(parseData);
-                    }
                     if(parseData.type === "pong") {
                         missedPongRef.current = 0;
+                    }
+                    else    {
+                        setData(parseData);
                     }
                   }
 
@@ -74,6 +74,7 @@ export function useWebsocket(url)   {
                         if(waitTime < 10 * 1000)   {
                             reconnCountRef.current += 1;
                         }
+                        clearTimeout(timerRef.current);
                         timerRef.current = setTimeout(() => {
                             initiateConn(url);
 
@@ -93,6 +94,7 @@ export function useWebsocket(url)   {
                 if(waitTime < 10 * 1000)   {
                     reconnCountRef.current += 1;
                 }
+                clearTimeout(timerRef.current);
                 timerRef.current = setTimeout(() => {
                     initiateConn(url);
 

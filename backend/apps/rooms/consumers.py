@@ -1,27 +1,44 @@
 import json
-
+from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
+
 from apps.rooms.models import Room
+from apps.executor.utils import run_code
+from apps.executor.models import Submission
 
 @database_sync_to_async
 def check_perms(room_name, user):
-    try:
-        room = Room.objects.select_related("host", "participant").filter(code=room_name).first()
-        if not room:
-            return "denied", False
-        
-
-        if(room.host == user):
-            partner_name = room.participant.username if room.participant else None
-            return "host", partner_name
-        elif(room.participant == user):
-            partner_name = room.host.username if room.host else None
-            return "participant", partner_name
-        else:
-            return "denied", False
-    except Room.DoesNotExist:
+    room = Room.objects.select_related("host", "participant").filter(code=room_name).first()
+    if not room:
         return "denied", False
+    
+
+    if(room.host == user):
+        partner_name = room.participant.username if room.participant else None
+        return "host", partner_name
+    elif(room.participant == user):
+        partner_name = room.host.username if room.host else None
+        return "participant", partner_name
+    else:
+        return "denied", False
+
+
+@database_sync_to_async
+def get_room_details(room_name):
+    return Room.objects.select_related("problem").filter(code=room_name).first()
+
+@database_sync_to_async
+def save_submission(error_type, user, roomDetails, codeContent, execution_ms=None, stdout=None):
+    submission_instance = Submission(room=roomDetails, user=user, status=error_type, code=codeContent)
+
+    if execution_ms:
+        submission_instance.execution_time = execution_ms
+    if stdout:
+        submission_instance.stdout = stdout
+
+    submission_instance.save()
+    return submission_instance
 
 class RoomConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -56,11 +73,16 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data):
         try:
-            text_data_json = json.loads(text_data)
+            data = json.loads(text_data)
             
-            if(text_data_json.get("type") == "ping"):
+            if(data.get("type") == "ping"):
                 await self.send(text_data=json.dumps({"type": "pong"}))
-                return
+                
+            elif(data.get("type") == "submission.request"):
+                data["user"] = self.user.username
+                await self.channel_layer.group_send(self.room_group_name, data)
+                
+            return
 
         except json.JSONDecodeError:
             pass
@@ -76,3 +98,65 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
     async def room_ended(self, event):
         await self.close(code=4000)
+
+    async def submission_request(self, event):
+        if self.scope["user"].username == event["user"]:
+            dataDict = event["data"]
+            code = dataDict["code"]
+
+            if not isinstance(code, str) or not code.strip() or len(code) > 100_000:
+                await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "message": "Code is not valid!", "status": "client_error"})
+
+            room_obj = await get_room_details(self.room_name)
+
+            if not room_obj:
+                return
+            
+            code_output_raw = await sync_to_async(run_code)(room_obj.problem.test_cases, code, room_obj.problem.order_matters)
+            code_output = json.loads(code_output_raw)
+
+            if "error" in code_output[0] and "input" not in code_output[0]:
+                err_msg = code_output[0]["error"]
+
+                if "Host" in code_output[0]["error"]:
+                    await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "message": err_msg, "status": "server_error"})
+                    return
+
+                err_type = Submission.Status.TIMEOUT if code_output[0].get("is_timeout") else Submission.Status.ERROR
+                submission_instance = await save_submission(error_type=err_type, user=self.scope["user"], roomDetails=room_obj, codeContent=code)
+                
+                await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "status": submission_instance.status, "message": err_msg, "details": code_output[0].get("details", "")})
+                return
+
+            failed_cases = [case for case in code_output if case["passed"] == False]
+            passed_cases = [case for case in code_output if case["passed"] == True]
+
+            avg_execution_time = -1
+
+            if not failed_cases:
+                avg_execution_time = sum(case["execution_ms"] for case in passed_cases)/len(passed_cases)
+
+                submission_instance = await save_submission(error_type=Submission.Status.ACCEPTED, execution_ms=avg_execution_time, user=self.scope["user"], roomDetails=room_obj, codeContent=code)
+
+                await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "status": submission_instance.status, "execution_time": avg_execution_time})
+
+            else:
+                failed_case = failed_cases[0]
+                submission_instance = await save_submission(error_type=Submission.Status.WRONG, roomDetails = room_obj, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"])
+
+                await self.channel_layer.group_send(self.room_group_name, {
+                    "type": "submission.result",
+                    "status": submission_instance.status,
+                    "traceback": failed_case.get("traceback", ""),
+                    "output": failed_case.get("output"),
+                    "stdout": failed_case.get("stdout", ""),
+                    "expected_output": failed_case.get("expected")
+                })
+
+        else:
+            await self.send(text_data=json.dumps({"type": "submission.loading", "message": "Running your submitted code"}))
+
+
+    
+    async def submission_result(self, event):
+        await self.send(text_data=json.dumps(event))

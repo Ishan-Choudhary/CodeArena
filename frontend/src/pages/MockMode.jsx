@@ -14,13 +14,14 @@
 
 
     const MockMode = () =>   {
-        const navigator = useNavigate();
+        const navigate = useNavigate();
         const location = useLocation();
         const roomDetails = location.state?.roomDetails;
         const problem = location.state?.problem;
 
         const {data, sendMessage} = useWebsocket(`ws://127.0.0.1:8000/ws/room/${roomDetails?.code}/`)
         const [loading, setLoading] = useState(false);
+        const [submitLoading, setSubmtiLoading] = useState(false);
 
         const editorRef = useRef(null);
 
@@ -31,6 +32,9 @@
         const undoManagerRef = useRef(null);
         
         const username = useAuthStore(state => state.username)
+        const [participantJoined, setParticipantJoined] = useState(false);
+        const [latestResult, setLatestResult] = useState(null);
+        const [submissions, setSubmissions] = useState([]);
 
         useEffect(() => {        
             const yDoc = new Y.Doc();
@@ -57,12 +61,22 @@
         useEffect(() => {
             if(data?.type === "participant_joined") {
                 document.documentElement.style.setProperty("--partner-name", `"${data?.user}"`)
+                setParticipantJoined(true);
             }
-            if(data?.type === "room_ended") {
+            else if(data?.type === "room_ended") {
                 toast.success("The session has been ended.");
-                navigator("/");
+                navigate("/");
             }
-        }, [data, navigator]);
+            else if(data?.type === "submission.loading")    {
+                setSubmtiLoading(true);
+            }
+            else if(data?.type === "submission.result") {
+                setSubmtiLoading(false);
+                setLatestResult(data);
+                setSubmissions((prev) => [data, ...prev]);
+            }
+        }, [data, navigate]);
+
 
         const handleEndSesh = async () => {
             if(loading) return;
@@ -174,33 +188,16 @@
         }
 
         const handleSubmit = async () =>   {
-
-
             const codeContent = yTextRef.current.toString();
-            console.log(codeContent);
-            const resp = await fetchWithAuth(`http://127.0.0.1:8000/api/submit/${roomDetails?.code}/`, {
-                method: "POST",
-                body: JSON.stringify({
-                    code: codeContent
-                })
-            })
-
-            if(resp.ok) {
-                const res = await resp.json();
-                console.log(res);
-            }
-            else    {
-                const res = await resp.json();
-                console.log(res);
-            }
-
-            // console.log(yTextRef.current.toString());
+            
+            setSubmtiLoading(true);
+            sendMessage({code: codeContent}, "submission.request");
 
         }
 
         return (
             <div className="h-screen flex flex-col bg-bg-base overflow-hidden relative">
-                <div className={`absolute z-50 h-screen w-full  flex-col items-center justify-center overflow-hidden bg-bg-base/50 ${data?.type === "participant_joined" ? "hidden" : "flex"}`}>
+                <div className={`absolute z-50 h-screen w-full  flex-col items-center justify-center overflow-hidden bg-bg-base/50 ${participantJoined ? "hidden" : "flex"}`}>
                     <div className="box-content bg-accent rounded-xl p-4 text-center">
                         <div className="flex items-center gap-2 h-auto">
                             {
@@ -238,7 +235,7 @@
                     <div className="flex-1 pt-2 border-2 border-bg-border px-6">
                         <div className="flex justify-between items-end font-bold text-text-secondary mb-5 mt-2">
                             <p>EDITOR</p>
-                            <button className="bg-accent text-text-primary px-2 py-2 rounded-xl" onClick={handleSubmit}>SUBMIT CODE</button>
+                            <button className="bg-accent text-text-primary px-2 py-2 rounded-xl" onClick={handleSubmit} disabled={submitLoading}>SUBMIT CODE</button>
                         </div>
                         <Editor
                             height="50vh"
@@ -253,7 +250,107 @@
                             </div>
                         </div>
                     </div>
-                    <div className="w-[350px]"></div>
+                    <div className="w-[350px] flex flex-col px-6 pt-2 border-t-2 border-bg-border overflow-y-auto">
+                        
+                        <div className="mb-6 mt-2">
+                            <p className="text-text-secondary font-bold text-sm tracking-wider uppercase mb-4">
+                                Test Results
+                            </p>
+                            
+                            {submitLoading ? (
+                                <p className="text-text-muted text-sm animate-pulse">Running code...</p>
+                            ) : !latestResult ? (
+                                <p className="text-text-muted text-sm">not submitted yet</p>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    <span className={`font-bold text-lg ${latestResult.status === 'accepted' ? 'text-success' : 'text-error'}`}>
+                                        {latestResult.status === 'wrong_answer' ? 'Wrong Answer' : 
+                                        latestResult.status === 'accepted' ? 'Accepted' : 
+                                        latestResult.status === 'timeout' ? 'Time Limit Exceeded' :
+                                        latestResult.status === 'server_error' ? 'Server Error' : 'Runtime Error'}
+                                    </span>
+
+                                    {latestResult.execution_time && latestResult.execution_time !== -1 && (
+                                        <span className="text-sm text-text-secondary">
+                                            Time: <span className="text-text-primary">{latestResult.execution_time.toFixed(2)} ms</span>
+                                        </span>
+                                    )}
+
+                                    {(latestResult.message || latestResult.traceback || latestResult.details) && (
+                                        <div className="mt-2">
+                                            <p className="text-xs text-text-secondary mb-1">
+                                                {latestResult.message ? latestResult.message : "Error Traceback:"}
+                                            </p>
+                                            <pre className="text-xs bg-bg-elevated border border-bg-border p-3 rounded-md font-mono text-error overflow-x-auto whitespace-pre-wrap">
+                                                {latestResult.traceback || latestResult.details || latestResult.message}
+                                            </pre>
+                                        </div>
+                                    )}
+                                    {latestResult.stdout && (
+                                        <div className="mt-2">
+                                            <p className="text-xs text-text-secondary mb-1">Standard Output (Logs):</p>
+                                            <pre className="text-sm bg-bg-elevated border border-bg-border p-3 rounded-md font-mono text-text-primary overflow-x-auto">
+                                                {latestResult.stdout}
+                                            </pre>
+                                        </div>
+                                    )}
+
+                                    {latestResult.status === 'wrong_answer' && (
+                                        <>
+                                            {latestResult.output !== undefined && (
+                                                <div className="mt-2">
+                                                    <p className="text-xs text-text-secondary mb-1">Function Returned:</p>
+                                                    <pre className="text-sm bg-bg-elevated border border-bg-border p-3 rounded-md font-mono text-error overflow-x-auto">
+                                                        {JSON.stringify(latestResult.output)}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                            <div className="mt-2">
+                                                <p className="text-xs text-text-secondary mb-1">Expected Output:</p>
+                                                <pre className="text-sm bg-bg-elevated border border-bg-border p-3 rounded-md font-mono text-success overflow-x-auto">
+                                                    {JSON.stringify(latestResult.expected_output)}
+                                                </pre>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <hr className="border-bg-border mb-6" />
+
+                        <div className="flex-1 pb-6">
+                            <p className="text-text-secondary font-bold text-sm tracking-wider uppercase mb-4">
+                                Submissions
+                            </p>
+                            
+                            {submissions.length === 0 ? (
+                                <p className="text-text-muted text-sm">no submissions yet</p>
+                            ) : (
+                                <div className="flex flex-col gap-3">
+                                    {submissions.map((sub, idx) => (
+                                        <div key={idx} className="bg-bg-elevated p-4 rounded-lg border border-bg-border flex flex-col gap-1">
+                                            <div className={`font-bold ${sub.status === 'accepted' ? 'text-success' : 'text-error'}`}>
+                                                {sub.status === 'wrong_answer' ? 'Wrong Answer' : 
+                                                sub.status === 'accepted' ? 'Accepted' : 
+                                                sub.status === 'timeout' ? 'Time Limit Exceeded' :
+                                                sub.status === 'server_error' ? 'Server Error' : 'Runtime Error'}
+                                            </div>
+                                            {sub.status === 'accepted' ? (
+                                                <div className="text-text-secondary text-xs">
+                                                    Execution Time: {sub.execution_time.toFixed(2)} ms
+                                                </div>
+                                            ) : (
+                                                <div className="text-text-secondary text-xs truncate">
+                                                    {sub.traceback ? "Failed due to exception" : "Failed on test case"}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
         )

@@ -31,7 +31,7 @@ for case in test_cases:
             except Exception as e:
                 user_stdout = f.getvalue()
                 error_trace = traceback.format_exc()
-                results.append({{"input": case["input"], "passed": False, "error": str(e), "traceback": error_trace, "stdout": user_stdout}})
+                results.append({{"input": case["input"], "passed": False, "error": str(e), "traceback": error_trace, "stdout": user_stdout, "expected": case["expected"]}})
                 break
 
 print(json.dumps(results))
