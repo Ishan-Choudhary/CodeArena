@@ -112,7 +112,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
             if not room_obj:
                 return
             
-            code_output_raw = await sync_to_async(run_code)(room_obj.problem.test_cases, code, room_obj.problem.order_matters)
+            code_output_raw = await sync_to_async(run_code)(room_obj.problem.test_cases, code, room_obj.problem.order_matters, room_obj.problem.input_types, room_obj.problem.output_type)
             code_output = json.loads(code_output_raw)
 
             if "error" in code_output[0] and "input" not in code_output[0]:

@@ -22,6 +22,8 @@ class Problem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     category = models.CharField(max_length=100, default="")
     order_matters = models.BooleanField(default=True)
-
+    input_types = models.JSONField(default=dict)
+    output_type = models.JSONField(default=dict)
+    
     def __str__(self):
         return self.title

@@ -23,7 +23,7 @@ class Room(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     code = models.CharField(max_length=6, unique=True)
-    problem = models.ForeignKey(to=Problem, on_delete=models.CASCADE)
+    problem = models.ForeignKey(to=Problem, on_delete=models.SET_NULL, null=True)
     host = models.ForeignKey(to=User, null=True, blank=True, on_delete=models.SET_NULL, related_name = "hosted_rooms")
     participant = models.ForeignKey(to=User, null=True, blank=True, on_delete=models.SET_NULL, related_name = "participated_rooms")
     testMode = models.CharField(choices=Mode, default=Mode.PRACTICE)
