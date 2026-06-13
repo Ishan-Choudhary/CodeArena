@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { LogOut, Play, Users, Search, Edit2 } from 'lucide-react';
 import { fetchWithAuth, getCookie } from '../utils/api';
 import { useAuthStore } from '../store/authStore';
+import ProblemDescription from "../components/ProblemDescription";
 
 export default function ProblemsPage() {
   const [problems, setProblems] = useState([]);
@@ -89,6 +90,8 @@ export default function ProblemsPage() {
       navigate('/room-settings', { state: { problem: selectedProblem } });
     }
   };
+
+  useEffect(() => {console.log(selectedProblem)}, [selectedProblem])
 
   const handleChangeUsername = async (e) => {
     e.preventDefault();
@@ -310,50 +313,7 @@ export default function ProblemsPage() {
         </div>
 
         <div className="w-[400px] flex flex-col bg-bg-surface/50 backdrop-blur-sm rounded-xl border border-bg-border overflow-hidden shadow-lg z-10">
-          {selectedProblem ? (
-            <div className="flex flex-col h-full">
-              <div className="p-6 border-b border-bg-border flex justify-between items-start gap-4">
-                <h2 className="text-xl font-medium text-text-primary m-0 leading-tight">
-                  {selectedProblem.title}
-                </h2>
-                <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium border shrink-0 ${getDifficultyStyles(selectedProblem.difficulty)}`}>
-                  {selectedProblem.difficulty || 'medium'}
-                </span>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-                <div className="text-[10px] font-medium text-text-muted uppercase tracking-wider mb-2 mt-0">DESCRIPTION</div>
-                <p className="text-sm text-text-secondary leading-relaxed m-0 mb-8">
-                  {selectedProblem.description || 'Description not available.'}
-                </p>
-                
-                <div className="text-[10px] font-medium text-text-muted uppercase tracking-wider mb-2">EXAMPLE</div>
-                <div className="bg-bg-base p-4 rounded-lg font-mono text-[13px] text-text-secondary whitespace-pre-wrap border border-bg-border mb-8">
-                  {selectedProblem.example || 'input: ...\noutput: ...'}
-                </div>
-                
-                <div className="text-[10px] font-medium text-text-muted uppercase tracking-wider mb-2">CONSTRAINTS</div>
-                <p className="text-sm text-text-secondary leading-relaxed m-0">
-                  {selectedProblem.constraints || 'Constraints not available.'}
-                </p>
-              </div>
-
-              <div className="p-6 border-t border-bg-border flex flex-col gap-3 bg-bg-surface">
-                <button 
-                  onClick={handleStartPractice} 
-                  className="w-full p-3 bg-accent hover:bg-accent-dark text-accent-light border-none rounded-lg text-sm font-medium cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-accent/20"
-                >
-                  <Play size={16} /> start practice
-                </button>
-                <button 
-                  onClick={() => navigate('/join-session')} 
-                  className="w-full p-3 bg-bg-elevated hover:bg-bg-border text-text-primary border border-bg-border rounded-lg text-sm font-medium cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-                >
-                  <Users size={16} /> Join mock session
-                </button>
-              </div>
-            </div>
-          ) : (
+          {selectedProblem ? (<ProblemDescription problem={selectedProblem} />) : (
             <div className="flex-1 flex justify-center items-center text-text-muted">
               select a problem
             </div>

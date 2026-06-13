@@ -137,15 +137,25 @@ export default function RoomSettingsPage() {
 
               <div className="text-[10px] font-medium text-text-muted uppercase tracking-wider mb-3">LANGUAGE</div>
               <div className="flex gap-4 mb-8">
-                {['python', 'javascript', 'java'].map((lang) => (
-                  <div 
-                    key={lang}
-                    className={`flex-1 border rounded-xl p-3 text-center cursor-pointer transition-colors text-sm font-medium ${language === lang ? 'border-accent bg-bg-elevated text-text-primary' : 'border-bg-border text-text-secondary hover:border-text-secondary'}`}
-                    onClick={() => setLanguage(lang)}
-                  >
-                    {lang}
-                  </div>
-                ))}
+                {['python', 'javascript', 'java'].map((lang) => {
+                  const isDisabled = lang === 'java';
+                  return (
+                    <div 
+                      key={lang}
+                      className={`flex-1 border rounded-xl p-3 text-center flex flex-col items-center justify-center transition-colors text-sm font-medium ${
+                        isDisabled 
+                          ? 'border-bg-border/50 text-text-muted bg-bg-base cursor-not-allowed opacity-50' 
+                          : language === lang 
+                            ? 'border-accent bg-bg-elevated text-text-primary cursor-pointer' 
+                            : 'border-bg-border text-text-secondary hover:border-text-secondary cursor-pointer'
+                      }`}
+                      onClick={() => !isDisabled && setLanguage(lang)}
+                    >
+                      <div>{lang}</div>
+                      {isDisabled && <div className="text-[10px] text-accent mt-1">coming soon</div>}
+                    </div>
+                  );
+                })}
               </div>
 
               <button 

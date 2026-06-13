@@ -81,6 +81,10 @@ class RoomConsumer(AsyncWebsocketConsumer):
             elif(data.get("type") == "submission.request"):
                 data["user"] = self.user.username
                 await self.channel_layer.group_send(self.room_group_name, data)
+            
+            elif(data.get("type") == "chat.message"):
+                data["user"] = self.user.username
+                await self.channel_layer.group_send(self.room_group_name, data)
                 
             return
 
@@ -111,8 +115,7 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
             if not room_obj:
                 return
-            
-            code_output_raw = await sync_to_async(run_code)(room_obj.problem.test_cases, code, room_obj.problem.order_matters, room_obj.problem.input_types, room_obj.problem.output_type)
+            code_output_raw = await sync_to_async(run_code)(room_obj.problem.test_cases, code, room_obj.problem.order_matters, room_obj.problem.input_types, room_obj.problem.output_type, room_obj.language.lower())
             code_output = json.loads(code_output_raw)
 
             if "error" in code_output[0] and "input" not in code_output[0]:
@@ -155,8 +158,12 @@ class RoomConsumer(AsyncWebsocketConsumer):
 
         else:
             await self.send(text_data=json.dumps({"type": "submission.loading", "message": "Running your submitted code"}))
-
-
-    
+ 
     async def submission_result(self, event):
         await self.send(text_data=json.dumps(event))
+
+    async def chat_message(self, event):
+        if event["user"] == self.user.username:
+            await self.send(text_data=json.dumps({"type": "chat.message", "from": "sender", "message": event["data"]["message"]}))
+        else:
+            await self.send(text_data=json.dumps({"type": "chat.message", "from": "receiver", "message": event["data"]["message"]}))

@@ -1,9 +1,11 @@
-def run_code(test_cases, code, order_matters, input_types, output_type):
+def run_code(test_cases, code, order_matters, input_types, output_type, language):
     import docker
     import json
     import subprocess
 
-    code_content = f"""import json
+    if language == "python":
+
+        code_content = f"""import json
 import time
 import io
 import traceback
@@ -115,6 +117,182 @@ for case in test_cases:
 
 print(json.dumps(results))
     """
+        image = "python:3.14-slim"
+        interpreter = ["python3", "-"]
+
+    elif language == "javascript":
+        code_content = f"""
+{code}
+
+const orderMatters = {json.dumps(order_matters)};
+const testCases = {json.dumps(test_cases)};
+const inputTypes = {json.dumps(input_types)};
+const outputType = {json.dumps(output_type)};
+
+class ListNode {{
+    constructor(val, next) {{
+        this.val = (val === undefined ? 0 : val);
+        this.next = (next === undefined ? null : next);
+    }}
+}}
+
+class TreeNode {{
+    constructor(val, left, right) {{
+        this.val = (val === undefined ? 0 : val);
+        this.left = (left === undefined ? null : left);
+        this.right = (right === undefined ? null : right);
+    }}
+}}
+
+function listToLinked(arr) {{
+    if (!arr || arr.length === 0) return null;
+    let head = new ListNode(arr[0]);
+    let curr = head;
+    for (let i = 1; i < arr.length; i++) {{
+        curr.next = new ListNode(arr[i]);
+        curr = curr.next;
+    }}
+    return head;
+}}
+
+function linkedToList(node) {{
+    const result = [];
+    while (node) {{
+        result.push(node.val);
+        node = node.next;
+    }}
+    return result;
+}}
+
+function arrayToTree(arr) {{
+    if (!arr || arr.length === 0) return null;
+    const root = new TreeNode(arr[0]);
+    const queue = [root];
+    let i = 1;
+    while (queue.length && i < arr.length) {{
+        const node = queue.shift();
+        if (i < arr.length && arr[i] !== null) {{
+            node.left = new TreeNode(arr[i]);
+            queue.push(node.left);
+        }}
+        i++;
+        if (i < arr.length && arr[i] !== null) {{
+            node.right = new TreeNode(arr[i]);
+            queue.push(node.right);
+        }}
+        i++;
+    }}
+    return root;
+}}
+
+function treeToArray(root) {{
+    if (!root) return [];
+    const result = [];
+    const queue = [root];
+    while (queue.length) {{
+        const node = queue.shift();
+        if (node) {{
+            result.push(node.val);
+            queue.push(node.left);
+            queue.push(node.right);
+        }} else {{
+            result.push(null);
+        }}
+    }}
+    while (result.length && result[result.length - 1] === null) {{
+        result.pop();
+    }}
+    return result;
+}}
+
+// --- BUG FIX: Intercept Console.log ---
+let capturedStdout = "";
+const originalConsoleLog = console.log;
+console.log = function(...args) {{
+    const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(" ");
+    
+    // Prevent infinite loops from crashing the container via OOM
+    if (capturedStdout.length < 10000) {{
+        capturedStdout += msg + "\\n";
+    }} else if (!capturedStdout.endsWith("...[Truncated]\\n")) {{
+        capturedStdout += "...[Truncated]\\n";
+    }}
+}};
+
+const results = [];
+for (const testCase of testCases) {{
+    const convertedInput = {{}};
+    for (const [key, value] of Object.entries(testCase.input)) {{
+        const convType = inputTypes[key];
+        if (convType === "linked_list") {{
+            convertedInput[key] = listToLinked(value);
+        }} else if (convType === "binary_tree") {{
+            convertedInput[key] = arrayToTree(value);
+        }} else {{
+            convertedInput[key] = value;
+        }}
+    }}
+
+    // Reset stdout for each test case
+    capturedStdout = "";
+
+    try {{
+        const start = process.hrtime.bigint();
+        // Since you guarantee input JSON matches param order exactly:
+        let output = main(...Object.values(convertedInput));
+        const end = process.hrtime.bigint();
+        const executionMs = Number(end - start) / 1e6;
+
+        if (outputType.type === "linked_list") {{
+            output = linkedToList(output);
+        }} else if (outputType.type === "binary_tree") {{
+            output = treeToArray(output);
+        }}
+
+        let passed;
+        if (orderMatters) {{
+            passed = JSON.stringify(output) === JSON.stringify(testCase.expected);
+        }} else {{
+            // --- BUG FIX: Proper deep sorting for Numbers vs Strings ---
+            const sortDeep = (arr) => {{
+                if (!Array.isArray(arr)) return arr;
+                return [...arr].map(sortDeep).sort((a, b) => {{
+                    if (typeof a === 'number' && typeof b === 'number') return a - b;
+                    return String(a).localeCompare(String(b));
+                }});
+            }};
+            
+            passed = JSON.stringify(sortDeep(output)) === JSON.stringify(sortDeep(testCase.expected));
+        }}
+
+        results.push({{
+            input: testCase.input,
+            passed: passed,
+            output: output,
+            expected: testCase.expected,
+            execution_ms: Math.floor(executionMs),
+            stdout: capturedStdout
+        }});
+    }} catch (e) {{
+        results.push({{
+            input: testCase.input,
+            passed: false,
+            error: e.message,
+            traceback: e.stack,
+            stdout: capturedStdout,
+            expected: testCase.expected
+        }});
+        break;
+    }}
+}}
+
+// Restore original console.log to safely emit the final JSON
+console.log = originalConsoleLog;
+console.log(JSON.stringify(results));
+"""
+
+        image = "node:24.16.0-slim"
+        interpreter = ["node", "-"]
 
     command = [
         "docker", "run",
@@ -128,9 +306,9 @@ print(json.dumps(results))
         "--security-opt", "no-new-privileges",
         "--cap-drop", "ALL",
         "--pids-limit", "64",
-        "python:3.14-slim",
+        image,
         "timeout", "5s",
-        "python3", "-"
+        *interpreter
     ]
     
     try:
