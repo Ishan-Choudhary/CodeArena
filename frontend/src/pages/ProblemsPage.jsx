@@ -12,6 +12,9 @@ export default function ProblemsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('problems');
+  const [rooms, setRooms] = useState([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
   const username = useAuthStore(state => state.username);
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const logoutAction = useAuthStore(state => state.logout);
@@ -66,6 +69,24 @@ export default function ProblemsPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const fetchRooms = async () => {
+    setLoadingRooms(true);
+    try {
+      const res = await fetchWithAuth('/api/rooms/');
+      if (res.ok) {
+        const data = await res.json();
+        setRooms(data);
+      } else {
+        toast.error('Failed to fetch rooms');
+      }
+    } catch (err) {
+      toast.error('Network error fetching rooms');
+      console.error(err);
+    } finally {
+      setLoadingRooms(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -133,6 +154,48 @@ export default function ProblemsPage() {
     return name.length > 6 ? name.substring(0, 6) + '...' : name;
   };
 
+  const handleDeleteRoom = async (code) => {
+    try {
+      const res = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${code}/`, { method: 'DELETE' });
+      if (res.ok) {
+        toast.success('Room deleted successfully');
+        fetchRooms();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.detail || 'Failed to delete room');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Network error deleting room');
+    }
+  };
+
+  const handleRejoinRoom = async (code) => {
+    try {
+      const roomRes = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${code}/`);
+      if (roomRes.ok) {
+        const roomDetails = await roomRes.json();
+        
+        const probRes = await fetchWithAuth(`http://127.0.0.1:8000/api/problems/${roomDetails.problem}/`);
+        if (probRes.ok) {
+          const problemDetails = await probRes.json();
+          if (roomDetails.testMode === "MOCK") {
+            navigate("/room", { state: { problem: problemDetails, roomDetails: roomDetails }});
+          } else {
+            navigate("/practice", { state: { problem: problemDetails, roomDetails: roomDetails }});
+          }
+        } else {
+          toast.error('Failed to fetch problem details');
+        }
+      } else {
+        toast.error('Failed to fetch room details');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Network error joining room');
+    }
+  };
+
   const filteredProblems = problems.filter(prob => {
     const matchesSearch = prob.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           prob.category?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -153,9 +216,21 @@ export default function ProblemsPage() {
           code<span className="text-accent">arena</span>
         </Link>
         <nav className="flex gap-8 text-sm">
-          <span className="text-text-primary font-medium cursor-pointer">problems</span>
-          <span className="text-text-secondary hover:text-text-primary transition-colors cursor-pointer">sessions</span>
-          <span className="text-text-secondary hover:text-text-primary transition-colors cursor-pointer">history</span>
+          <span 
+            className={`font-medium cursor-pointer transition-colors ${activeTab === 'problems' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+            onClick={() => setActiveTab('problems')}
+          >
+            problems
+          </span>
+          <span 
+            className={`font-medium cursor-pointer transition-colors ${activeTab === 'sessions' ? 'text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}
+            onClick={() => {
+              setActiveTab('sessions');
+              fetchRooms();
+            }}
+          >
+            sessions
+          </span>
         </nav>
         <div className="flex items-center gap-4 relative" ref={dropdownRef}>
           <div 
@@ -227,98 +302,184 @@ export default function ProblemsPage() {
         {/* Background ambient light */}
         <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-accent/5 rounded-full blur-[100px] pointer-events-none"></div>
 
-        <div className="flex-1 flex flex-col bg-bg-surface/50 backdrop-blur-sm rounded-xl border border-bg-border overflow-hidden shadow-lg z-10">
-          <div className="flex p-4 gap-4 border-b border-bg-border items-center">
-            <div className="flex-1 flex items-center bg-bg-base border border-bg-border rounded-lg px-3 py-2 focus-within:border-accent transition-colors">
-              <Search size={16} className="text-text-muted mr-2" />
-              <input 
-                type="text" 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="search problems or categories..." 
-                className="bg-transparent text-text-primary text-sm font-ui outline-none w-full placeholder-text-muted" 
-              />
+        {activeTab === 'problems' ? (
+          <>
+            <div className="flex-1 flex flex-col bg-bg-surface/50 backdrop-blur-sm rounded-xl border border-bg-border overflow-hidden shadow-lg z-10">
+              <div className="flex p-4 gap-4 border-b border-bg-border items-center">
+                <div className="flex-1 flex items-center bg-bg-base border border-bg-border rounded-lg px-3 py-2 focus-within:border-accent transition-colors">
+                  <Search size={16} className="text-text-muted mr-2" />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="search problems or categories..." 
+                    className="bg-transparent text-text-primary text-sm font-ui outline-none w-full placeholder-text-muted" 
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setDifficultyFilter('all')}
+                    className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'all' ? 'bg-bg-elevated border-text-secondary text-text-primary' : 'bg-bg-base border-bg-border text-text-secondary hover:bg-bg-elevated'}`}>
+                    all
+                  </button>
+                  <button 
+                    onClick={() => setDifficultyFilter('easy')}
+                    className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'easy' ? 'bg-[#0F1A14] border-[#0F6E56] text-success' : 'bg-bg-base border-bg-border text-success hover:bg-bg-elevated'}`}>
+                    easy
+                  </button>
+                  <button 
+                    onClick={() => setDifficultyFilter('medium')}
+                    className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'medium' ? 'bg-[#1A1400] border-[#854F0B] text-warning' : 'bg-bg-base border-bg-border text-warning hover:bg-bg-elevated'}`}>
+                    med
+                  </button>
+                  <button 
+                    onClick={() => setDifficultyFilter('hard')}
+                    className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'hard' ? 'bg-[#1A0D0D] border-[#A32D2D] text-error' : 'bg-bg-base border-bg-border text-error hover:bg-bg-elevated'}`}>
+                    hard
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex-1 overflow-auto">
+                {loading ? (
+                  <div className="p-8 text-center text-text-secondary animate-pulse">loading problems...</div>
+                ) : (
+                  <table className="w-full text-left border-collapse min-w-[600px]">
+                    <thead className="sticky top-0 bg-bg-surface border-b border-bg-border shadow-sm z-10">
+                      <tr>
+                        <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-12">#</th>
+                        <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider">Title</th>
+                        <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Diff</th>
+                        <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Category</th>
+                        <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-24">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredProblems.length > 0 ? (
+                        filteredProblems.map((prob, idx) => {
+                          const isSelected = selectedProblem?.id === prob.id;
+                          return (
+                            <tr 
+                              key={prob.id}
+                              onClick={() => setSelectedProblem(prob)}
+                              className={`group border-b border-bg-border/50 cursor-pointer transition-colors ${isSelected ? 'bg-bg-elevated' : 'hover:bg-bg-base/80'}`}
+                            >
+                              <td className="p-4 text-sm text-text-muted group-hover:text-text-secondary transition-colors">{idx + 1}</td>
+                              <td className="p-4 text-sm font-medium text-text-primary">{prob.title}</td>
+                              <td className="p-4">
+                                <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${getDifficultyStyles(prob.difficulty)}`}>
+                                  {prob.difficulty || 'easy'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-sm text-text-secondary">{prob.category || 'arrays'}</td>
+                              <td className="p-4 text-sm text-text-muted">-</td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan="5" className="p-8 text-center text-sm text-text-secondary">
+                            No problems found matching your filters.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setDifficultyFilter('all')}
-                className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'all' ? 'bg-bg-elevated border-text-secondary text-text-primary' : 'bg-bg-base border-bg-border text-text-secondary hover:bg-bg-elevated'}`}>
-                all
-              </button>
-              <button 
-                onClick={() => setDifficultyFilter('easy')}
-                className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'easy' ? 'bg-[#0F1A14] border-[#0F6E56] text-success' : 'bg-bg-base border-bg-border text-success hover:bg-bg-elevated'}`}>
-                easy
-              </button>
-              <button 
-                onClick={() => setDifficultyFilter('medium')}
-                className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'medium' ? 'bg-[#1A1400] border-[#854F0B] text-warning' : 'bg-bg-base border-bg-border text-warning hover:bg-bg-elevated'}`}>
-                med
-              </button>
-              <button 
-                onClick={() => setDifficultyFilter('hard')}
-                className={`border rounded-lg px-3 py-2 text-xs transition-colors ${difficultyFilter === 'hard' ? 'bg-[#1A0D0D] border-[#A32D2D] text-error' : 'bg-bg-base border-bg-border text-error hover:bg-bg-elevated'}`}>
-                hard
-              </button>
+
+            <div className="w-[400px] flex flex-col bg-bg-surface/50 backdrop-blur-sm rounded-xl border border-bg-border overflow-hidden shadow-lg z-10">
+              {selectedProblem ? (<ProblemDescription problem={selectedProblem} />) : (
+                <div className="flex-1 flex justify-center items-center text-text-muted">
+                  select a problem
+                </div>
+              )}
+              <div className="p-6 border-t border-bg-border flex flex-col gap-3 bg-bg-surface">
+                    <button 
+                      onClick={handleStartPractice} 
+                      className="w-full p-3 bg-accent hover:bg-accent-dark text-accent-light border-none rounded-lg text-sm font-medium cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 shadow-lg shadow-accent/20"
+                    >
+                      <Play size={16} /> start practice
+                    </button>
+                    <button 
+                      onClick={() => navigate('/join-session')} 
+                      className="w-full p-3 bg-bg-elevated hover:bg-bg-border text-text-primary border border-bg-border rounded-lg text-sm font-medium cursor-pointer transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                      <Users size={16} /> Join mock session
+                    </button>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex-1 overflow-auto">
-            {loading ? (
-              <div className="p-8 text-center text-text-secondary animate-pulse">loading problems...</div>
-            ) : (
-              <table className="w-full text-left border-collapse min-w-[600px]">
-                <thead className="sticky top-0 bg-bg-surface border-b border-bg-border shadow-sm z-10">
-                  <tr>
-                    <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-12">#</th>
-                    <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider">Title</th>
-                    <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Diff</th>
-                    <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Category</th>
-                    <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-24">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProblems.length > 0 ? (
-                    filteredProblems.map((prob, idx) => {
-                      const isSelected = selectedProblem?.id === prob.id;
-                      return (
+          </>
+        ) : (
+          <div className="flex-1 flex flex-col bg-bg-surface/50 backdrop-blur-sm rounded-xl border border-bg-border overflow-hidden shadow-lg z-10">
+            <div className="flex p-4 gap-4 border-b border-bg-border items-center">
+              <h2 className="text-text-primary font-medium text-lg">Active Sessions</h2>
+            </div>
+            <div className="flex-1 overflow-auto">
+              {loadingRooms ? (
+                <div className="p-8 text-center text-text-secondary animate-pulse">loading sessions...</div>
+              ) : (
+                <table className="w-full text-left border-collapse min-w-[600px]">
+                  <thead className="sticky top-0 bg-bg-surface border-b border-bg-border shadow-sm z-10">
+                    <tr>
+                      <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Room Code</th>
+                      <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider">Host</th>
+                      <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Language</th>
+                      <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Mode</th>
+                      <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-24">Status</th>
+                      <th className="p-4 text-[10px] font-medium text-text-muted uppercase tracking-wider w-32">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rooms.length > 0 ? (
+                      rooms.map((room, idx) => (
                         <tr 
-                          key={prob.id}
-                          onClick={() => setSelectedProblem(prob)}
-                          className={`group border-b border-bg-border/50 cursor-pointer transition-colors ${isSelected ? 'bg-bg-elevated' : 'hover:bg-bg-base/80'}`}
+                          key={room.code}
+                          className="group border-b border-bg-border/50 transition-colors hover:bg-bg-base/80"
                         >
-                          <td className="p-4 text-sm text-text-muted group-hover:text-text-secondary transition-colors">{idx + 1}</td>
-                          <td className="p-4 text-sm font-medium text-text-primary">{prob.title}</td>
+                          <td className="p-4 text-sm font-medium text-text-primary">{room.code}</td>
+                          <td className="p-4 text-sm text-text-secondary">{room.host}</td>
+                          <td className="p-4 text-sm text-text-secondary">{room.language}</td>
+                          <td className="p-4 text-sm text-text-secondary">{room.testMode}</td>
                           <td className="p-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium border ${getDifficultyStyles(prob.difficulty)}`}>
-                              {prob.difficulty || 'easy'}
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium border bg-[#1A1400] text-warning border-[#854F0B]">
+                              {room.status}
                             </span>
                           </td>
-                          <td className="p-4 text-sm text-text-secondary">{prob.category || 'arrays'}</td>
-                          <td className="p-4 text-sm text-text-muted">-</td>
+                          <td className="p-4 flex gap-2">
+                            {(room.status === 'ACTIVE' || room.status === 'WAITING') && (room.host === username || room.participant === username) && (
+                              <button 
+                                onClick={() => handleRejoinRoom(room.code)}
+                                className="text-xs bg-accent/20 text-accent hover:bg-accent/30 transition-colors px-3 py-1 rounded cursor-pointer"
+                              >
+                                Join
+                              </button>
+                            )}
+                            {room.host === username && (
+                              <button 
+                                onClick={() => handleDeleteRoom(room.code)}
+                                className="text-xs bg-error/20 text-error hover:bg-error/30 transition-colors px-3 py-1 rounded cursor-pointer"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </td>
                         </tr>
-                      );
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="p-8 text-center text-sm text-text-secondary">
-                        No problems found matching your filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
-
-        <div className="w-[400px] flex flex-col bg-bg-surface/50 backdrop-blur-sm rounded-xl border border-bg-border overflow-hidden shadow-lg z-10">
-          {selectedProblem ? (<ProblemDescription problem={selectedProblem} />) : (
-            <div className="flex-1 flex justify-center items-center text-text-muted">
-              select a problem
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" className="p-8 text-center text-sm text-text-secondary">
+                          No active sessions found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );

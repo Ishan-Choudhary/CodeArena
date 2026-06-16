@@ -188,7 +188,7 @@ CHANNEL_LAYERS = {
                     "host": "redis",
                     "port": 6379,
                     "socket_keepalive": True,
-                    "health_check_interval": 30,
+                    "health_check_interval": 15,
                     "socket_timeout": 3600,
                     "socket_connect_timeout": 3600,
                 }

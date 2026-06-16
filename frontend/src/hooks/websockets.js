@@ -67,6 +67,7 @@ export function useWebsocket(url)   {
                     if(event.code === 4000)   {
                         setData({type: "room_ended"});
                         wsRef.current = null;
+                        return;
                     }
                     else    {
                         let waitTime = Math.min( (2 ** reconnCountRef.current) * 1000, 10000);
@@ -108,6 +109,7 @@ export function useWebsocket(url)   {
             clearTimeout(timerRef.current);
             clearInterval(heartBeatRef.current);
             if(wsRef.current)   {
+                wsRef.current.onclose = null;
                 wsRef.current.close();
             }
         }

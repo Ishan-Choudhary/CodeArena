@@ -68,8 +68,8 @@ export default function JoinSessionPage() {
           toast.error('No problem associated with this room');
         }
       } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.detail || 'Failed to join room');
+        const err = await res.json()
+        toast.error(err.message || 'Room not found');
       }
     } catch (err) {
       toast.error('Error joining room');

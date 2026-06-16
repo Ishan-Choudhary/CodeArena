@@ -10,6 +10,7 @@ import JoinSessionPage from './pages/JoinSessionPage';
 import './index.css';
 
 import { Toaster } from 'react-hot-toast';
+import PracticeMode from './pages/PracticeMode';
 
 function App() {
   useEffect(() => {
@@ -34,6 +35,7 @@ function App() {
         <Route path="/problems" element={<ProblemsPage />} />
         <Route path="/room-settings" element={<RoomSettingsPage />} />
         <Route path="/room" element={<MockMode />} />
+        <Route path="/practice" element={<PracticeMode />} />
         <Route path="/join-session" element={<JoinSessionPage />} />
       </Routes>
     </Router>

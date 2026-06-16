@@ -23,7 +23,6 @@ def check_perms(room_name, user):
     else:
         return "denied", False
 
-
 @database_sync_to_async
 def get_room_details(room_name):
     return Room.objects.select_related("problem").filter(code=room_name).first()
@@ -40,32 +39,7 @@ def save_submission(error_type, user, roomDetails, codeContent, execution_ms=Non
     submission_instance.save()
     return submission_instance
 
-class RoomConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.room_name= self.scope["url_route"]["kwargs"]["room_name"]
-        self.room_group_name = f"room_{self.room_name}"
-        self.user = self.scope["user"]
-
-        user_role, partner_name = await check_perms(self.room_name, self.user)
-
-        if(user_role == "denied"):
-            await self.close()
-            return
-    
-        await self.accept()
-        await self.channel_layer.group_add(
-            self.room_group_name, self.channel_name
-        )
-
-        if partner_name:
-            await self.send(text_data=json.dumps({
-                "type": "participant_joined",
-                "user": partner_name
-            }))
-
-        if user_role == "participant":
-            await self.channel_layer.group_send(self.room_group_name, {"type": "participant.joined", "sender_channel_name": self.channel_name, "user": self.user.username})
-
+class BaseRoomConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(
             self.room_group_name, self.channel_name
@@ -114,7 +88,8 @@ class RoomConsumer(AsyncWebsocketConsumer):
             room_obj = await get_room_details(self.room_name)
 
             if not room_obj:
-                return
+                await self.channel_layer.group_send("room_ended")
+
             code_output_raw = await sync_to_async(run_code)(room_obj.problem.test_cases, code, room_obj.problem.order_matters, room_obj.problem.input_types, room_obj.problem.output_type, room_obj.language.lower())
             code_output = json.loads(code_output_raw)
 
@@ -167,3 +142,38 @@ class RoomConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({"type": "chat.message", "from": "sender", "message": event["data"]["message"]}))
         else:
             await self.send(text_data=json.dumps({"type": "chat.message", "from": "receiver", "message": event["data"]["message"]}))
+
+class MockModeRoomConsumer(BaseRoomConsumer):
+    async def connect(self):
+        self.room_name= self.scope["url_route"]["kwargs"]["room_name"]
+        self.room_group_name = f"room_{self.room_name}"
+        self.user = self.scope["user"]
+
+        user_role, partner_name = await check_perms(self.room_name, self.user)
+
+        if(user_role == "denied"):
+            await self.close()
+            return
+    
+        await self.accept()
+        await self.channel_layer.group_add(
+            self.room_group_name, self.channel_name
+        )
+
+        if partner_name:
+            await self.send(text_data=json.dumps({
+                "type": "participant_joined",
+                "user": partner_name
+            }))
+
+        if user_role == "participant":
+            await self.channel_layer.group_send(self.room_group_name, {"type": "participant.joined", "sender_channel_name": self.channel_name, "user": self.user.username})
+
+class AiRoomConsumer(BaseRoomConsumer):
+    async def connect(self):
+        self.room_name = self.scope["url_route"]["kwargs"]["room_name"]
+        self.room_group_name = f"room_{self.room_name}"
+        self.user = self.scope["user"]
+
+        await self.accept()
+        await self.channel_layer.group_add(self.room_group_name, self.channel_name)

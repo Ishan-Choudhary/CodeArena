@@ -39,25 +39,31 @@ export default function RoomSettingsPage() {
   const handleStartSession =  async () => {
     try {
       setLoading(true);
-      if(mode === "mock") {
-        const res = await fetchWithAuth("http://127.0.0.1:8000/api/rooms/", {
-          "method": "POST",
-          "body": JSON.stringify(
-            {
-              "testMode": mode.toUpperCase(),
-              "language": language.toUpperCase(),
-              "problem": problem?.id,
-            }
-          )
-        })
 
-        if(res.ok)  {
-          const data = await res.json();
+      const res = await fetchWithAuth("http://127.0.0.1:8000/api/rooms/", {
+        "method": "POST",
+        "body": JSON.stringify(
+          {
+            "testMode": mode.toUpperCase(),
+            "language": language.toUpperCase(),
+            "problem": problem?.id,
+          }
+        )
+      })
+      const data = await res.json();
+
+      if(res.ok)  {
+        if(mode === "mock") {
           navigate("/room", { state: {problem: problem, roomDetails: data}});
+
+        }
+        else  {
+
+          navigate("/practice", {state:{problem: problem, roomDetails: data}})
         }
       }
       else  {
-      // TODO: ADD AI MODE
+        toast.error(data["message"]);
       }
     }
     catch (err) {
@@ -78,7 +84,6 @@ export default function RoomSettingsPage() {
         <nav className="flex gap-8 text-sm">
           <Link to="/problems" className="text-text-primary font-medium cursor-pointer">problems</Link>
           <span className="text-text-secondary hover:text-text-primary transition-colors cursor-pointer">sessions</span>
-          <span className="text-text-secondary hover:text-text-primary transition-colors cursor-pointer">history</span>
         </nav>
         <div className="flex items-center gap-4">
           <div className="flex items-center text-sm font-medium text-accent-light cursor-pointer hover:text-accent transition-colors">

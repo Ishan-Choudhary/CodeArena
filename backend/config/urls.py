@@ -32,6 +32,6 @@ urlpatterns = [
     path("api/csrf/", views.get_csrf_token),
     path("martor/", include("martor.urls")),
     path("api/problems/", include("apps.problems.urls")),
-    path("api/rooms/", include("apps.rooms.urls")),
+    path("api/rooms/", include("apps.rooms.urls"), name="room-apis"),
     path("api/ping/", views.Ping.as_view()),
 ]

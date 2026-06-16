@@ -11,4 +11,4 @@ class IsRoomJoinable(permissions.BasePermission):
     message = "Room is not available to join"
 
     def has_object_permission(self, request, view, obj):
-        return obj.status == Room.Status.WAITING and obj.host != request.user
+        return obj.status == Room.Status.WAITING and obj.host != request.user and obj.participant is None
