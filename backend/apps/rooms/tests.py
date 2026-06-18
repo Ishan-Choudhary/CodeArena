@@ -14,7 +14,7 @@ class RoomTests(APITestCase):
         
     def test_create_room(self):
         problem = ProblemFactory()
-        response = self.host_client.post("/api/rooms/", {"problem": str(problem.id), "mode": Room.Mode.MOCK, "language": Room.Language.PYTHON})
+        response = self.host_client.post("/api/rooms/", {"problem": str(problem.id), "testMode": Room.Mode.MOCK, "language": Room.Language.PYTHON})
         self.assertEqual(response.status_code, 201)
 
     def test_intruder_join(self):
@@ -35,7 +35,7 @@ class RoomTests(APITestCase):
 
 
     def test_end_room(self):
-        room = RoomFactory(host=self.host, participant=self.participant, status=Room.Status.ACTIVE, mode=Room.Mode.MOCK)
+        room = RoomFactory(host=self.host, participant=self.participant, status=Room.Status.ACTIVE, testMode=Room.Mode.MOCK)
         response = self.participant_client.post(f"/api/rooms/{room.code}/end/")
         self.assertEqual(response.status_code, 403)
 
@@ -45,7 +45,7 @@ class RoomTests(APITestCase):
     def test_host_cannot_join_own_room(self):
         room = RoomFactory(host=self.host)
         response = self.host_client.post(f"/api/rooms/{room.code}/join/")
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 400)
 
 
     

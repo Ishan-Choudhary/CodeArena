@@ -2,7 +2,7 @@ backend/venv/
 frontend/node_modules/
 UI_DOC.pdf
 .cursorrules
-
+backend/.coverage
 .antigravitycli/
 
 *.env

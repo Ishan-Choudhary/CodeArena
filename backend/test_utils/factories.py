@@ -29,6 +29,6 @@ class RoomFactory(factory.django.DjangoModelFactory):
 
     problem = factory.SubFactory(ProblemFactory)
     host = factory.SubFactory(UserFactory)
-    mode = Room.Mode.MOCK
+    testMode = Room.Mode.MOCK
     language = Room.Language.PYTHON
     code = factory.Sequence(lambda n: f'ABC{n:03d}')
