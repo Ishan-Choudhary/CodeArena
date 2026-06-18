@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     "apps.problems",
     "apps.rooms",
     "apps.executor",
+    "apps.interviewer",
     "corsheaders",
     "rest_framework",
     "djoser",

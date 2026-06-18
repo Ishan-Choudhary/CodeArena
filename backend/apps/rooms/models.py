@@ -31,4 +31,3 @@ class Room(models.Model):
     language = models.CharField(choices=Language, default=Language.PYTHON)
     created_at = models.DateTimeField(auto_now_add=True)
     ended_at = models.DateTimeField(null=True, blank=True)
-     

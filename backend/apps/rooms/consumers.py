@@ -2,10 +2,13 @@ import json
 from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.core import serializers
 
 from apps.rooms.models import Room
 from apps.executor.utils import run_code
 from apps.executor.models import Submission
+from apps.interviewer.models import InterviewMessage
+from apps.interviewer import interviewer
 
 @database_sync_to_async
 def check_perms(room_name, user):
@@ -28,8 +31,8 @@ def get_room_details(room_name):
     return Room.objects.select_related("problem").filter(code=room_name).first()
 
 @database_sync_to_async
-def save_submission(error_type, user, roomDetails, codeContent, execution_ms=None, stdout=None):
-    submission_instance = Submission(room=roomDetails, user=user, status=error_type, code=codeContent)
+def save_submission(error_type, user, room_id, codeContent, execution_ms=None, stdout=None):
+    submission_instance = Submission(room_id=room_id, user=user, status=error_type, code=codeContent)
 
     if execution_ms:
         submission_instance.execution_time = execution_ms
@@ -38,6 +41,19 @@ def save_submission(error_type, user, roomDetails, codeContent, execution_ms=Non
 
     submission_instance.save()
     return submission_instance
+
+@database_sync_to_async
+def save_message(room_id, role, content):
+    instance = InterviewMessage(room_id=room_id, role=role, content=content)
+
+    instance.save()
+
+@database_sync_to_async
+def get_submission_info(room_id):
+    latest_submission = Submission.objects.filter(room_id=room_id).order_by("-submitted_at")[:1]
+    json_serialized = serializers.serialize("json", latest_submission)
+
+    return json_serialized
 
 class BaseRoomConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
@@ -101,7 +117,7 @@ class BaseRoomConsumer(AsyncWebsocketConsumer):
                     return
 
                 err_type = Submission.Status.TIMEOUT if code_output[0].get("is_timeout") else Submission.Status.ERROR
-                submission_instance = await save_submission(error_type=err_type, user=self.scope["user"], roomDetails=room_obj, codeContent=code)
+                submission_instance = await save_submission(error_type=err_type, user=self.scope["user"], room_id=room_obj.id, codeContent=code)
                 
                 await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "status": submission_instance.status, "message": err_msg, "details": code_output[0].get("details", "")})
                 return
@@ -114,13 +130,13 @@ class BaseRoomConsumer(AsyncWebsocketConsumer):
             if not failed_cases:
                 avg_execution_time = sum(case["execution_ms"] for case in passed_cases)/len(passed_cases)
 
-                submission_instance = await save_submission(error_type=Submission.Status.ACCEPTED, execution_ms=avg_execution_time, user=self.scope["user"], roomDetails=room_obj, codeContent=code)
+                submission_instance = await save_submission(error_type=Submission.Status.ACCEPTED, execution_ms=avg_execution_time, user=self.scope["user"], room_id=room_obj.id, codeContent=code)
 
                 await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "status": submission_instance.status, "execution_time": avg_execution_time})
 
             else:
                 failed_case = failed_cases[0]
-                submission_instance = await save_submission(error_type=Submission.Status.WRONG, roomDetails = room_obj, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"])
+                submission_instance = await save_submission(error_type=Submission.Status.WRONG, room_id = room_obj.id, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"])
 
                 await self.channel_layer.group_send(self.room_group_name, {
                     "type": "submission.result",
@@ -177,3 +193,29 @@ class AiRoomConsumer(BaseRoomConsumer):
 
         await self.accept()
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+
+    async def receive(self, text_data):
+        try:
+            data = json.loads(text_data)
+            if(data.get("type") == "chat.message"):
+                await self.channel_layer.group_send(self.room_group_name, data)
+                return
+            else:
+                await super().receive(text_data)
+        except json.JSONDecodeError:
+            pass
+
+    async def chat_message(self, event):
+        room_obj = await get_room_details(room_name=self.room_name)
+        msg_content = event["data"]["message"]
+        if not event["data"].get("role"):
+            obj_data = {"type": "chat.message", "from": "receiver", "message": msg_content}
+            await self.send(text_data=json.dumps(obj_data))
+            await save_message(room_obj.id, InterviewMessage.Role.ASSISTANT, msg_content)
+        else:
+            obj_data = {"type": "chat.message", "from": "sender", "message": msg_content}
+            await self.send(text_data=json.dumps(obj_data))
+            await save_message(room_obj.id, InterviewMessage.Role.USER, msg_content)
+            
+            submission_info = await get_submission_info(room_obj.id)
+            await interviewer.call_llm(room_obj.problem.description, event["data"]["code"], submission_info, room_obj.id, self.room_group_name)

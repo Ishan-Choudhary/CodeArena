@@ -201,7 +201,7 @@
 
         const handleSendMessage = () => {
             if (!chatInput.trim()) return;
-            sendMessage({ message: chatInput }, "chat.message");
+            sendMessage({ message: chatInput, role: "USER", code: yTextRef.current.toString() }, "chat.message");
             setChatInput("");
         }
 
