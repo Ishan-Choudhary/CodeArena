@@ -208,14 +208,80 @@ class AiRoomConsumer(BaseRoomConsumer):
     async def chat_message(self, event):
         room_obj = await get_room_details(room_name=self.room_name)
         msg_content = event["data"]["message"]
-        if not event["data"].get("role"):
-            obj_data = {"type": "chat.message", "from": "receiver", "message": msg_content}
-            await self.send(text_data=json.dumps(obj_data))
-            await save_message(room_obj.id, InterviewMessage.Role.ASSISTANT, msg_content)
-        else:
-            obj_data = {"type": "chat.message", "from": "sender", "message": msg_content}
-            await self.send(text_data=json.dumps(obj_data))
-            await save_message(room_obj.id, InterviewMessage.Role.USER, msg_content)
+
+        obj_data = {"type": "chat.message", "from": "sender", "message": msg_content}
+        await self.send(text_data=json.dumps(obj_data))
+        await save_message(room_obj.id, InterviewMessage.Role.USER, msg_content)
+        
+        submission_info = await get_submission_info(room_obj.id)
+        await interviewer.call_llm(room_obj.problem.description, event["data"]["code"], submission_info, room_obj.id, self.room_group_name)
+
+
+    async def submission_request(self, event):
+        dataDict = event["data"]
+        code = dataDict["code"]
+
+        if not isinstance(code, str) or not code.strip() or len(code) > 100_000:
+            await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "message": "Code is not valid!", "status": "client_error"})
+
+        room_obj = await get_room_details(self.room_name)
+
+        if not room_obj:
+            await self.channel_layer.group_send("room_ended")
+
+        code_output_raw = await sync_to_async(run_code)(room_obj.problem.test_cases, code, room_obj.problem.order_matters, room_obj.problem.input_types, room_obj.problem.output_type, room_obj.language.lower())
+        code_output = json.loads(code_output_raw)
+
+        if "error" in code_output[0] and "input" not in code_output[0]:
+            err_msg = code_output[0]["error"]
+
+            if "Host" in code_output[0]["error"]:
+                await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "message": err_msg, "status": "server_error"})
+                return
+
+            err_type = Submission.Status.TIMEOUT if code_output[0].get("is_timeout") else Submission.Status.ERROR
+            submission_instance = await save_submission(error_type=err_type, user=self.scope["user"], room_id=room_obj.id, codeContent=code)
             
+            await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "status": submission_instance.status, "message": err_msg, "details": code_output[0].get("details", "")})
             submission_info = await get_submission_info(room_obj.id)
-            await interviewer.call_llm(room_obj.problem.description, event["data"]["code"], submission_info, room_obj.id, self.room_group_name)
+            await interviewer.call_llm(room_obj.problem.description, code, submission_info, room_obj.id, self.room_group_name)
+            return
+
+        failed_cases = [case for case in code_output if case["passed"] == False]
+        passed_cases = [case for case in code_output if case["passed"] == True]
+
+        avg_execution_time = -1
+
+        if not failed_cases:
+            avg_execution_time = sum(case["execution_ms"] for case in passed_cases)/len(passed_cases)
+
+            submission_instance = await save_submission(error_type=Submission.Status.ACCEPTED, execution_ms=avg_execution_time, user=self.scope["user"], room_id=room_obj.id, codeContent=code)
+
+            await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "status": submission_instance.status, "execution_time": avg_execution_time})
+
+        else:
+            failed_case = failed_cases[0]
+            submission_instance = await save_submission(error_type=Submission.Status.WRONG, room_id = room_obj.id, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"])
+
+            await self.channel_layer.group_send(self.room_group_name, {
+                "type": "submission.result",
+                "status": submission_instance.status,
+                "traceback": failed_case.get("traceback", ""),
+                "output": failed_case.get("output"),
+                "stdout": failed_case.get("stdout", ""),
+                "expected_output": failed_case.get("expected")
+            })
+
+        submission_info = await get_submission_info(room_obj.id)
+        await interviewer.call_llm(room_obj.problem.description, code, submission_info, room_obj.id, self.room_group_name)
+
+
+    async def chat_stream_start(self, event):
+        await self.send(text_data=json.dumps(event))
+
+    async def chat_stream_chunk(self, event):
+        await self.send(text_data=json.dumps(event))
+        
+    async def chat_stream_end(self, event):
+        await self.send(text_data=json.dumps({"type": event["type"], "message": event["full_text"]}))
+        await save_message(event["room_id"], InterviewMessage.Role.ASSISTANT, event["full_text"])

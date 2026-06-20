@@ -1,7 +1,8 @@
 import os
 from channels.db import database_sync_to_async
 from google import genai
-
+from google.genai import types
+from channels.layers import get_channel_layer
 
 from .models import InterviewMessage
 
@@ -12,21 +13,37 @@ def last_n_chat_logs(n, room_id):
 
     for log in chats:
         role_mapping = "user" if log.role == InterviewMessage.Role.USER else "model"
-        formatted_logs.append({"role": role_mapping, "parts": [{"text": log.content}]})
+
+        if formatted_logs and formatted_logs[-1]["role"] == "role_mapping":
+            formatted_logs[-1]["parts"][0]["text"] += f"\n\n{log.content}"
+        else: 
+            formatted_logs.append({"role": role_mapping, "parts": [{"text": log.content}]})
+
+    if formatted_logs and formatted_logs[0]["role"] == "model":
+        formatted_logs.insert(0, {"role": "user", "parts": [{"text": "Let's begin"}]})
+    
+    if not formatted_logs or formatted_logs[-1]["role"] == "model":
+        formatted_logs.append({"role": "user", "parts": [{"text": "Please evaluate my current code"}]})
+
 
     return formatted_logs
 
 async def build_context(system_prompt, problem_statement, current_code, submission_info, room_id):
-    messages = [ 
-        {"role": "system", "content": system_prompt}, 
-        { "role": "system", "content": f"Problem: {problem_statement}" }, 
-        { "role": "system", "content": f"Current Code:\n{current_code}" }, 
-        { "role": "system", "content": f"Latest Submission:\n{submission_info}" } 
-    ]
-    chat_logs = await last_n_chat_logs(5, room_id)
-    messages.extend(chat_logs)
+    compiled_system_instruction = f""" {system_prompt}
+ 
+Problem: 
+{problem_statement} 
 
-    return messages
+Current Code:
+{current_code} 
+ 
+Latest Submission:
+{submission_info} 
+"""
+    chat_logs = await last_n_chat_logs(5, room_id)
+
+
+    return compiled_system_instruction, chat_logs
 
 
 async def call_llm(problem_statement, current_code, submission_info, room_id, group_name) -> None:
@@ -64,9 +81,10 @@ CODING ASSISTANCE RULES
 * Never provide a complete solution.
 * Never provide a complete function, class, or algorithm.
 * Never provide code that would effectively solve the problem.
-* If showing syntax, limit examples to tiny snippets of at most 1–2 lines.
+* If showing syntax, limit examples to tiny snippets of at most 1-2 lines.
 * Prefer asking questions over giving instructions.
 * Reveal only enough information to help the candidate make the next step.
+* Never use LaTex. Only plain english
 
 DEBUGGING GUIDELINES
 
@@ -119,11 +137,35 @@ Before every response, determine:
 3. Respond only with that.
 """
     #TODO BUILD RESPONSE STREAMING
-    # context = await build_context(SYSTEM_PROMPT, problem_statement,current_code, submission_info, room_id)
-    pass    
-    # async with genai.Client().aio as aclient:
-    #     # genai.types.Con
-    #     respone = await aclient.models.generate_content(
-    #         model="gemini-2.5-flash",
+    
+    system_instruction, chat_logs = await build_context(SYSTEM_PROMPT, problem_statement,current_code, submission_info, room_id)
+    channel_layer = get_channel_layer()
+    ai_resp = ""
 
-    #     )
+    await channel_layer.group_send(group_name, {"type": "chat.stream_start"})
+
+    async with genai.Client().aio as aclient:
+        response_stream = await aclient.models.generate_content_stream(
+            model="gemini-3.5-flash",
+            contents=chat_logs,
+            config = types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.4
+            )
+        )
+
+        async for chunk in response_stream:
+            if chunk.text:
+                ai_resp += chunk.text
+                print(chunk.text)
+                await channel_layer.group_send(group_name, {
+                    "type": "chat.stream_chunk",
+                    "text_so_far": ai_resp
+                })
+
+    
+        await channel_layer.group_send(group_name, {
+            "type": "chat.stream_end",
+            "room_id": str(room_id),
+            "full_text": ai_resp
+        })

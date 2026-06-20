@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 
-export default function ChatWindow({ chatMessages, chatInput, setChatInput, handleSendMessage, currentUsername, partnerUsername }) {
+export default function ChatWindow({ chatMessages, chatInput, setChatInput, handleSendMessage, currentUsername, partnerUsername, waitingForInterviewer=false }) {
     const endOfMessagesRef = useRef(null);
 
     useEffect(() => {
@@ -57,7 +57,7 @@ export default function ChatWindow({ chatMessages, chatInput, setChatInput, hand
                 />
                 <button 
                     onClick={handleSendMessage}
-                    disabled={!chatInput.trim()}
+                    disabled={!chatInput.trim() || waitingForInterviewer}
                     className="p-2 bg-accent hover:bg-accent-dark text-accent-light rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
                 >
                     <Send size={18} />

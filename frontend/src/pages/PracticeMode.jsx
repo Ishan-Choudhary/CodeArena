@@ -40,6 +40,7 @@
         const [chatInput, setChatInput] = useState("");
         const [latestResult, setLatestResult] = useState(null);
         const [submissions, setSubmissions] = useState([]);
+        const [isWaitingForLLM, setIsWaitingForLLM] = useState(false);
 
         useEffect(() => {        
             const yDoc = new Y.Doc();
@@ -78,6 +79,26 @@
             }
             else if(data?.type === "chat.message") {
                 setChatMessages((prev) => [...prev, data]);
+            }
+            else if(data?.type === "chat.stream_start")  {
+                setChatMessages((prev) => [...prev, {from: "receiver", message: ""}]);
+            }
+            else if(data?.type === "chat.stream_chunk")   {
+                setChatMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastIndex = newMessages.length - 1;
+                    newMessages[lastIndex].message = data.text_so_far;
+                    return newMessages;
+                })
+            }
+            else if(data?.type === "chat.stream_end")   {
+                setChatMessages((prev) => {
+                    const newMessages = [...prev];
+                    const lastIndex = newMessages.length - 1;
+                    newMessages[lastIndex].message = data.message;
+                    return newMessages;
+                })
+                setIsWaitingForLLM(false);
             }
         }, [data, navigate]);
 
@@ -193,7 +214,7 @@
 
         const handleSubmit = async () =>   {
             const codeContent = yTextRef.current.toString();
-            
+            console.log(codeContent);
             setSubmtiLoading(true);
             sendMessage({code: codeContent}, "submission.request");
 
@@ -201,6 +222,7 @@
 
         const handleSendMessage = () => {
             if (!chatInput.trim()) return;
+            setIsWaitingForLLM(true);
             sendMessage({ message: chatInput, role: "USER", code: yTextRef.current.toString() }, "chat.message");
             setChatInput("");
         }
@@ -242,6 +264,7 @@
                                 handleSendMessage={handleSendMessage}
                                 currentUsername={username}
                                 partnerUsername={partnerUsername || "Partner"}
+                                waitingForInterviewer={isWaitingForLLM}
                             />
                         </div>
                     </div>
