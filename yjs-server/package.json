@@ -1,0 +1,20 @@
+{
+  "name": "yjs-server",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@hocuspocus/extension-database": "^4.3.0",
+    "@hocuspocus/extension-redis": "^4.3.0",
+    "@hocuspocus/extension-webhook": "^4.3.0",
+    "@hocuspocus/server": "^4.3.0",
+    "axios": "^1.18.0",
+    "yjs": "^13.6.31"
+  }
+}

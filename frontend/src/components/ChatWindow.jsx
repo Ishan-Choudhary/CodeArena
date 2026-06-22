@@ -11,7 +11,7 @@ export default function ChatWindow({ chatMessages, chatInput, setChatInput, hand
     const handleKeyDown = (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
-            handleSendMessage();
+            waitingForInterviewer && handleSendMessage();
         }
     };
 

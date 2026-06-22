@@ -34,4 +34,5 @@ urlpatterns = [
     path("api/problems/", include("apps.problems.urls")),
     path("api/rooms/", include("apps.rooms.urls"), name="room-apis"),
     path("api/ping/", views.Ping.as_view()),
+    path("api/yjs/", include("apps.yjs.urls"))
 ]

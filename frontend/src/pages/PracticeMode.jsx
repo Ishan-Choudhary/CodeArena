@@ -6,9 +6,7 @@
     import ProblemDescription from "../components/ProblemDescription";
     import TestResultsPanel from "../components/TestResultsPanel";
     import ChatWindow from "../components/ChatWindow";
-    import * as Y from "yjs";
-    import {WebsocketProvider} from "y-websocket";
-    import {MonacoBinding} from "y-monaco";
+    import { useYjsMonaco } from "../hooks/useYjsMonaco";
 
     import { useWebsocket } from "../hooks/websockets";
     import { fetchWithAuth } from "../utils/api";
@@ -25,13 +23,7 @@
         const [loading, setLoading] = useState(false);
         const [submitLoading, setSubmtiLoading] = useState(false);
 
-        const editorRef = useRef(null);
-
-        const yDocRef = useRef(null);
-        const yTextRef = useRef(null);
-        const providerRef = useRef(null);
-        const bindingRef = useRef(null);
-        const undoManagerRef = useRef(null);
+        const { handleEditorMount, getCode } = useYjsMonaco(roomDetails?.code);
         
         const username = useAuthStore(state => state.username)
         const [participantJoined, setParticipantJoined] = useState(false);
@@ -42,27 +34,7 @@
         const [submissions, setSubmissions] = useState([]);
         const [isWaitingForLLM, setIsWaitingForLLM] = useState(false);
 
-        useEffect(() => {        
-            const yDoc = new Y.Doc();
-            const provider = new WebsocketProvider("ws://127.0.0.1:1234", roomDetails?.code, yDoc);
 
-            yDocRef.current = yDoc;
-            providerRef.current = provider;
-
-            if(editorRef.current)   {
-                setupBinding(editorRef.current, yDoc, provider);
-            }
-
-            return () =>    {
-                if(bindingRef.current) {
-                    bindingRef.current.destroy();
-                    bindingRef.current = null;
-                }
-                provider.destroy();
-                yDoc.destroy();
-            }
-
-        }, [roomDetails?.code]);
 
         useEffect(() => {
             if(data?.type === "room_ended") {
@@ -124,96 +96,10 @@
             }
         }
 
-        const setupBinding = (editor, yDoc, provider) =>    {
-            if(bindingRef.current) return;
-            
-            const model = editor.getModel()
-            if(!model)  return;
 
-            provider.awareness.setLocalStateField("user",{
-                name: username,
-                color: "#9fed2b",
-            })
-                    
-            const type = yDoc.getText("monaco");
-            
-            yTextRef.current = type;
-
-            const binding = new MonacoBinding(
-                type, 
-                model,
-                new Set([editor]),
-                provider.awareness,
-            )
-
-            bindingRef.current = binding;
-            
-            const yUndoManager = new Y.UndoManager(type, {
-                trackedOrigins: new Set([binding])
-            });
-            
-            undoManagerRef.current = yUndoManager;
-            
-            const setupInitialView = () =>  {
-                if(type.toString().length === 0)    {
-                    yDoc.transact(() => {
-                        type.insert(0, problem?.starter_code?.[roomDetails?.language.toLowerCase()]);
-                    }, "setup");
-                }
-                
-                editor.layout();
-                
-                setTimeout(() => {
-                    if (editor && editor.getModel()) {
-                        editor.focus();
-                        editor.setPosition({ lineNumber: 1, column: 1 });
-                    }
-                }, 100);
-            };
-            
-            if(provider.synced) {
-                setupInitialView();
-            }
-            else    {
-                provider.once("sync", setupInitialView);
-            }
-                       
-        }
-        
-        const handleEditorMount = (editor, monaco) =>   {
-            editorRef.current = editor;
-
-            const model = editor.getModel();
-
-            if(model)   {
-                model.setEOL(monaco.editor.EndOfLineSequence.LF);
-            }
-
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, () =>    {
-                undoManagerRef.current?.undo();
-            })
-
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyY, () =>    {
-                undoManagerRef.current?.redo();
-            })
-
-            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ, () =>    {
-                undoManagerRef.current?.redo();
-            })
-            
-            const yDoc = yDocRef.current;
-            const provider = providerRef.current;
-
-            if(!yDoc || !provider) return;
-            
-            if(yDoc && provider)    {
-                setupBinding(editor, yDoc, provider);
-            }
-
-        }
 
         const handleSubmit = async () =>   {
-            const codeContent = yTextRef.current.toString();
+            const codeContent = getCode();
             console.log(codeContent);
             setSubmtiLoading(true);
             sendMessage({code: codeContent}, "submission.request");
@@ -223,7 +109,7 @@
         const handleSendMessage = () => {
             if (!chatInput.trim()) return;
             setIsWaitingForLLM(true);
-            sendMessage({ message: chatInput, role: "USER", code: yTextRef.current.toString() }, "chat.message");
+            sendMessage({ message: chatInput, role: "USER", code: getCode() }, "chat.message");
             setChatInput("");
         }
 
