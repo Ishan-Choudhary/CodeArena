@@ -12,9 +12,9 @@
   "dependencies": {
     "@hocuspocus/extension-database": "^4.3.0",
     "@hocuspocus/extension-redis": "^4.3.0",
-    "@hocuspocus/extension-webhook": "^4.3.0",
     "@hocuspocus/server": "^4.3.0",
     "axios": "^1.18.0",
+    "ioredis": "^5.11.1",
     "yjs": "^13.6.31"
   }
 }

@@ -43,16 +43,6 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis_data:/data
-  
-  # yjs:
-  #   image: node:24-slim
-  #   working_dir: /app
-  #   command: sh -c "npm i yjs y-websocket@2 && ./node_modules/.bin/y-websocket"
-  #   ports:
-  #     - "1234:1234"
-  #   environment:
-  #     - PORT=1234
-  #     - HOST=0.0.0.0
 
   hocuspocus:
     build:

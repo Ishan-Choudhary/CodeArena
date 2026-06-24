@@ -7,8 +7,13 @@ from django.db.models import Q
 from rest_framework.generics import ListCreateAPIView, RetrieveDestroyAPIView
 from rest_framework.views import APIView, Response, status
 from rest_framework.permissions import IsAuthenticated
+
 from .models import Room
-from .serializers import RoomSerializer, ViewRoomSerializer
+from apps.yjs.models import Document
+from apps.interviewer.models import InterviewMessage
+from apps.executor.models import Submission
+
+from .serializers import RoomSerializer, ViewRoomSerializer, SubmissionSerializer, ChatSerializer
 from .permissions import IsHost, IsRoomJoinable
 
 from asgiref.sync import async_to_sync
@@ -54,6 +59,7 @@ class CreateRoom(ListCreateAPIView):
             room_status = Room.Status.WAITING
             serializer.save(host=self.request.user, status=room_status, code=self.generate_code())
 
+
 class RoomInfo(RetrieveDestroyAPIView):
     queryset = Room.objects.all()
     serializer_class = ViewRoomSerializer
@@ -96,3 +102,32 @@ class EndRoom(APIView):
         )
 
         return Response({"message": "Room ended"}, status=status.HTTP_200_OK)
+    
+    
+class GetRoomPlayback(APIView):
+    
+    def get(self, request, code):
+        try:
+            room = Room.objects.get(code = code)
+            data = {}
+
+            try:
+                document = Document.objects.get(room__id = room.id)
+                data["timeline"] = document.get_timeline()
+            except Document.DoesNotExist:
+                data["timeline"] = []
+
+            submission = Submission.objects.filter(room = room).order_by("submitted_at")
+            data["submission"] = SubmissionSerializer(submission, many=True).data
+            
+            if room.testMode == Room.Mode.PRACTICE:
+                chats = InterviewMessage.objects.filter(room__id = room.id).order_by("timestamp")
+                data["chats"] = ChatSerializer(chats, many=True).data
+            else:
+                data["chats"] = []
+
+            return Response(data, status=status.HTTP_200_OK)
+
+            
+        except Room.DoesNotExist:
+            return Response({"status": "error", "message": "Room does not exist!"}, status=status.HTTP_404_NOT_FOUND)

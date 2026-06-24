@@ -1,5 +1,7 @@
 from rest_framework.serializers import ModelSerializer, SlugRelatedField
 from .models import Room
+from apps.executor.models import Submission
+from apps.interviewer.models import InterviewMessage
 
 class RoomSerializer(ModelSerializer):
     class Meta:
@@ -13,3 +15,13 @@ class ViewRoomSerializer(ModelSerializer):
     class Meta:
         model = Room
         fields = ["code", "host", "problem", "language", "status", "testMode", "participant"]
+
+class SubmissionSerializer(ModelSerializer):
+    class Meta:
+        model = Submission
+        fields = ["stdout", "status", "execution_time", "submitted_at"]
+
+class ChatSerializer(ModelSerializer):
+    class Meta:
+        model = InterviewMessage
+        fields = ["role", "content", "timestamp"]

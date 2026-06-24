@@ -154,7 +154,12 @@ export default function JoinSessionPage() {
     }
   };
 
-  const handleOpenReplayModal = (roomCode) => {
+  const handleOpenReplayModal = async (roomCode) => {
+    const res = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomCode}/replay/`)
+
+    const resp = await res.json();
+    console.log(resp);
+    
     setSelectedRoomForReplay(roomCode);
     setIsModalOpen(true);
   };
@@ -347,6 +352,9 @@ export default function JoinSessionPage() {
             {/* Modal Content - Left empty for user */}
             <div className="flex-1 p-4 overflow-auto">
               {/* Content will go here */}
+
+              
+
             </div>
           </div>
         </div>

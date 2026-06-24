@@ -1,68 +1,62 @@
 import json
-from django.http import JsonResponse, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
+import base64
+from django.http import HttpResponse
+# from django.conf import settings
+from rest_framework.views import APIView, Response, status
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from .models import Room, Document
 
-@csrf_exempt
-def save_yjs_document(request):
-    if request.method == "POST":
+class YjsWebhookView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+
+        data = request.data
+
+        if data.get("event") != "change":
+            return Response({"status": "ignored", "message": "Not a change event"}, status=status.HTTP_200_OK)
+
+        room_code = data.get("documentName")
+        new_chunks = data.get("new_chunks", [])
+        master_state_b64 = data.get("document", {}).get("state", "")
+
         try:
-            data = json.loads(request.body)
-
-            if data.get("event") != "change":
-                return JsonResponse({"status": "ignored", "reason": "Not a change event"})
-
-            room_code = data.get("documentName")
-            state_hex = data.get("document", {}).get("state")
-
-            if state_hex:
-                room_instance = Room.objects.get(code=room_code)
-                binary_data = bytes.fromhex(state_hex)
-
-                Document.objects.update_or_create(
-                    room=room_instance,
-                    defaults={"binary_data": binary_data}
-                )
-
-                return JsonResponse({"status": "success"})
+            room = Room.objects.get(code=room_code)
+            document, created = Document.objects.get_or_create(room=room)
 
         except Room.DoesNotExist:
-            return JsonResponse({"status": "room_not_found"}, status=404)
-        
-        except Exception as  e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=400)
-        
-def get_yjs_document(request, room_code):
-    try:
-        doc = Document.objects.get(room__code = room_code)
-        if doc.binary_data:
-            return HttpResponse(doc.binary_data, content_type="application/octet-stream")
-        
-        return HttpResponse(status=404)
+            return Response({"status": "error", "message": "Room does not exist"}, status=status.HTTP_404_NOT_FOUND)
 
-    except Document.DoesNotExist:
+        if master_state_b64:
+            document.binary_data = base64.b64decode(master_state_b64)
+
+        if new_chunks:
+            current_timeline = document.get_timeline()
+            current_timeline.extend(new_chunks)
+            document.set_timeline(current_timeline)
+
+        document.save()
+
+        return Response({"status": "success"}, status=status.HTTP_200_OK)
+
+class YjsDocumentView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, room_code):
         try:
-            room = Room.objects.select_related("problem").get(code=room_code)
-            problem = room.problem
-            language = room.language.lower()
-            starter_code = problem.starter_code.get(language, "")
-
-            response = HttpResponse(starter_code, content_type="text/plain")
-            response["X-is-Starter-Code"] = 'true'
-            return response
-        
-        except Room.DoesNotExist:
+            doc = Document.objects.get(room__code=room_code)
+            if doc.binary_data:
+                return HttpResponse(doc.binary_data, content_type="application/octet-stream")
             return HttpResponse(status=404)
+        except Document.DoesNotExist:
+            try:
+                room = Room.objects.select_related("problem").get(code=room_code)
+                problem = room.problem
+                language = room.language.lower()
+                starter_code = problem.starter_code.get(language, "")
 
-
-
-# def get_yjs_document(request, room_code):
-#     try:
-#         doc = Document.objects.get(room__code = room_code)
-#         if doc.binary_data:
-#             return HttpResponse(doc.binary_data, content="application/octet-stream")
-        
-#         return HttpResponse(status=404)
-
-#     except Document.DoesNotExist:
-#         return HttpResponse(status=404)
+                response = HttpResponse(starter_code, content_type="text/plain")
+                response["X-is-Starter-Code"] = 'true'
+                return response
+            
+            except Room.DoesNotExist:
+                return HttpResponse(status=404)
