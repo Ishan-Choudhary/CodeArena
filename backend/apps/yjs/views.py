@@ -55,7 +55,7 @@ class YjsDocumentView(APIView):
                 starter_code = problem.starter_code.get(language, "")
 
                 response = HttpResponse(starter_code, content_type="text/plain")
-                response["X-is-Starter-Code"] = 'true'
+                response["x-is-starter-code"] = 'true'
                 return response
             
             except Room.DoesNotExist:

@@ -28,9 +28,20 @@ const server = new Server({
                 responseType: 'arraybuffer'                
             })
 
+
             if(response.headers['x-is-starter-code'] === 'true')    {
                 const starterCode = new TextDecoder().decode(response.data);
                 document.getText("monaco").insert(0, starterCode);
+                
+                const chunkKey = `chunks:{${documentName}}`;
+                const initialUpdate = Y.encodeStateAsUpdate(document);
+                const initialChunkData = JSON.stringify({
+                    time: Date.now(),
+                    update: Buffer.from(initialUpdate).toString("base64")
+                });
+
+                await redisClient.rpush(chunkKey, initialChunkData);
+
                 return document;
             }
 

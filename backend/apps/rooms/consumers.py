@@ -223,7 +223,8 @@ class AiRoomConsumer(BaseRoomConsumer):
 
         if not isinstance(code, str) or not code.strip() or len(code) > 100_000:
             await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "message": "Code is not valid!", "status": "client_error"})
-
+            return
+        
         room_obj = await get_room_details(self.room_name)
 
         if not room_obj:
@@ -274,7 +275,7 @@ class AiRoomConsumer(BaseRoomConsumer):
 
         submission_info = await get_submission_info(room_obj.id)
         await interviewer.call_llm(room_obj.problem.description, code, submission_info, room_obj.id, self.room_group_name)
-
+        return
 
     async def chat_stream_start(self, event):
         await self.send(text_data=json.dumps(event))

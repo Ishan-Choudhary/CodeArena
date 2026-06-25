@@ -7,6 +7,7 @@ import ProblemsPage from './pages/ProblemsPage';
 import RoomSettingsPage from './pages/RoomSettingsPage';
 import MockMode from './pages/MockMode';
 import JoinSessionPage from './pages/JoinSessionPage';
+import ReplayPage from "./pages/ReplayPage";
 import './index.css';
 
 import { Toaster } from 'react-hot-toast';
@@ -37,6 +38,7 @@ function App() {
         <Route path="/room" element={<MockMode />} />
         <Route path="/practice" element={<PracticeMode />} />
         <Route path="/join-session" element={<JoinSessionPage />} />
+        <Route path="/replay" element={<ReplayPage />} />
       </Routes>
     </Router>
   );

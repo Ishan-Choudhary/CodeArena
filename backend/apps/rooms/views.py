@@ -118,7 +118,7 @@ class GetRoomPlayback(APIView):
                 data["timeline"] = []
 
             submission = Submission.objects.filter(room = room).order_by("submitted_at")
-            data["submission"] = SubmissionSerializer(submission, many=True).data
+            data["submissions"] = SubmissionSerializer(submission, many=True).data
             
             if room.testMode == Room.Mode.PRACTICE:
                 chats = InterviewMessage.objects.filter(room__id = room.id).order_by("timestamp")

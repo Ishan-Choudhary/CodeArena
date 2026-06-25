@@ -146,7 +146,7 @@ Before every response, determine:
 
     async with genai.Client().aio as aclient:
         response_stream = await aclient.models.generate_content_stream(
-            model="gemini-3.5-flash",
+            model="gemini-2.5-flash",
             contents=chat_logs,
             config = types.GenerateContentConfig(
                 system_instruction=system_instruction,

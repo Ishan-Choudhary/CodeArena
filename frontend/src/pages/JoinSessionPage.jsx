@@ -17,9 +17,7 @@ export default function JoinSessionPage() {
   const [loadingRooms, setLoadingRooms] = useState(false);
   const username = useAuthStore(state => state.username);
 
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRoomForReplay, setSelectedRoomForReplay] = useState(null);
+
 
   const navigate = useNavigate();
 
@@ -46,6 +44,22 @@ export default function JoinSessionPage() {
       fetchRooms();
     }
   }, [activeTab]);
+
+  const fetchProblemDetails = async (problemId) => {
+    if (!problemId) return null;
+    try {
+      const res = await fetchWithAuth(`http://127.0.0.1:8000/api/problems/${problemId}/`);
+      if (res.ok) {
+        return await res.json();
+      }
+      toast.error('Failed to fetch problem details');
+      return null;
+    } catch (err) {
+      console.error(err);
+      toast.error('Network error fetching problem details');
+      return null;
+    }
+  };
 
   const handleSearchRoom = async (e) => {
     e.preventDefault();
@@ -85,9 +99,8 @@ export default function JoinSessionPage() {
         const problemId = joinData.problem || roomDetails.problem;
         
         if (problemId) {
-          const probRes = await fetchWithAuth(`http://127.0.0.1:8000/api/problems/${problemId}/`);
-          if (probRes.ok) {
-            const problemDetails = await probRes.json();
+          const problemDetails = await fetchProblemDetails(problemId);
+          if (problemDetails) {
             navigate('/room', { 
               state: { 
                 problem: problemDetails,
@@ -95,8 +108,6 @@ export default function JoinSessionPage() {
               } 
             });
             toast.success('Joined room successfully');
-          } else {
-            toast.error('Failed to fetch problem details');
           }
         } else {
           toast.error('No problem associated with this room');
@@ -134,16 +145,13 @@ export default function JoinSessionPage() {
       const roomRes = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomCode}/`);
       if (roomRes.ok) {
         const rDetails = await roomRes.json();
-        const probRes = await fetchWithAuth(`http://127.0.0.1:8000/api/problems/${rDetails.problem}/`);
-        if (probRes.ok) {
-          const problemDetails = await probRes.json();
+        const problemDetails = await fetchProblemDetails(rDetails.problem);
+        if (problemDetails) {
           if (rDetails.testMode === "MOCK") {
             navigate("/room", { state: { problem: problemDetails, roomDetails: rDetails }});
           } else {
             navigate("/practice", { state: { problem: problemDetails, roomDetails: rDetails }});
           }
-        } else {
-          toast.error('Failed to fetch problem details');
         }
       } else {
         toast.error('Failed to fetch room details');
@@ -154,14 +162,71 @@ export default function JoinSessionPage() {
     }
   };
 
-  const handleOpenReplayModal = async (roomCode) => {
-    const res = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomCode}/replay/`)
+  const calculatePlaybackBounds = (data) => {
+    const {timeline = [], submissions = [], chats = []} = data;
 
-    const resp = await res.json();
-    console.log(resp);
+    const endTimesList = [];
+    const startTimesList = []
+
+    if(timeline.length > 0)   {
+      endTimesList.push(timeline[timeline.length - 1].time);
+      startTimesList.push(timeline[0].time);
+    }
+
+    if(submissions.length > 0)  {
+      const lastSub = submissions[submissions.length - 1].submitted_at;
+      endTimesList.push(new Date(lastSub).getTime());
+      startTimesList.push(new Date(submissions[0].submitted_at).getTime());
+    }
+
+    if(chats.length > 0)  {
+      const lastChat = chats[chats.length - 1].timestamp;
+      endTimesList.push(new Date(lastChat).getTime());
+      startTimesList.push(new Date(chats[0].timestamp).getTime());
+    }
+
+    if(endTimesList.length === 0 || startTimesList.length === 0)  {
+      return {startTime: 0, endTime: 0, durationMs: 0}
+    }
+
+    const startTime = Math.min(...startTimesList);
+    const endTime = Math.max(...endTimesList);
+    const durationMs = endTime - startTime;
+
+    return {startTime, endTime, durationMs};
+
+  }
+
+  const handleReplay = async (roomCode) => {    
+    try {
+      const roomRes = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomCode}/`);
+      if (!roomRes.ok) {
+        toast.error('Failed to fetch room details for replay');
+        return;
+      }
+      const rDetails = await roomRes.json();
+      
+      const problemDetails = await fetchProblemDetails(rDetails.problem);
+      if (!problemDetails) return;
+
+      const res = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomCode}/replay/`)
+      const data = await res.json();
+      const replayData = typeof data === 'string' ? JSON.parse(data) : data;
+
+      const playbackBounds = calculatePlaybackBounds(replayData);
     
-    setSelectedRoomForReplay(roomCode);
-    setIsModalOpen(true);
+      navigate("/replay", {
+        state:  {
+          roomDetails: rDetails,
+          problem: problemDetails,
+          replayData,
+          playbackBounds
+        }
+      })
+    } catch(err) {
+      console.error(err);
+      toast.error('Failed to load replay data');
+    }
   };
 
   return (
@@ -296,7 +361,7 @@ export default function JoinSessionPage() {
                               </button>
                             )}
                             <button 
-                              onClick={() => handleOpenReplayModal(room.code)}
+                              onClick={() => handleReplay(room.code)}
                               className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors px-3 py-1 rounded cursor-pointer"
                             >
                               Replay
@@ -327,38 +392,7 @@ export default function JoinSessionPage() {
         )}
       </div>
 
-      {/* Replay Modal */}
-      {isModalOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-bg-base/80 backdrop-blur-sm"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div 
-            className="relative bg-bg-surface border border-bg-border shadow-2xl rounded-xl w-[800px] h-[600px] max-w-[90vw] max-h-[90vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside
-          >
-            {/* Modal Header */}
-            <div className="flex justify-between items-center p-4 border-b border-bg-border">
-              <h2 className="text-lg font-medium text-text-primary">
-                Replay Session: {selectedRoomForReplay}
-              </h2>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="text-text-muted hover:text-text-primary transition-colors p-1 rounded-full hover:bg-bg-elevated"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            {/* Modal Content - Left empty for user */}
-            <div className="flex-1 p-4 overflow-auto">
-              {/* Content will go here */}
 
-              
-
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

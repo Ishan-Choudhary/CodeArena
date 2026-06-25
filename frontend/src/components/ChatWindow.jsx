@@ -1,19 +1,14 @@
 import { useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 
-export default function ChatWindow({ chatMessages, chatInput, setChatInput, handleSendMessage, currentUsername, partnerUsername, waitingForInterviewer=false }) {
+export default function ChatWindow({ chatMessages, chatInput, setChatInput, handleSendMessage, currentUsername, partnerUsername }) {
     const endOfMessagesRef = useRef(null);
 
     useEffect(() => {
         endOfMessagesRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [chatMessages]);
 
-    const handleKeyDown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            waitingForInterviewer && handleSendMessage();
-        }
-    };
+    
 
     return (
         <div className="flex-1 flex flex-col bg-bg-surface border border-bg-border rounded-xl overflow-hidden h-full">
@@ -24,7 +19,7 @@ export default function ChatWindow({ chatMessages, chatInput, setChatInput, hand
                     </div>
                 ) : (
                     chatMessages.map((msg, idx) => {
-                        const isSender = msg.from === "sender";
+                        const isSender = msg.from === "sender" || msg.role === "USER";
                         const displayUsername = isSender ? currentUsername : partnerUsername;
                         
                         return (
@@ -37,7 +32,7 @@ export default function ChatWindow({ chatMessages, chatInput, setChatInput, hand
                                         ? "bg-accent text-accent-light rounded-tr-sm" 
                                         : "bg-bg-elevated text-text-primary border border-bg-border rounded-tl-sm"
                                 }`}>
-                                    {msg.message}
+                                    {msg.message || msg.content}
                                 </div>
                             </div>
                         );
@@ -50,7 +45,6 @@ export default function ChatWindow({ chatMessages, chatInput, setChatInput, hand
                 <textarea
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
                     placeholder="Type a message..."
                     className="flex-1 bg-bg-elevated border border-bg-border rounded-xl py-2 px-4 text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none focus:border-accent transition-colors min-h-[40px] max-h-[120px]"
                     rows={1}
