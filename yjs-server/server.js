@@ -41,7 +41,6 @@ const server = new Server({
                 });
 
                 await redisClient.rpush(chunkKey, initialChunkData);
-
                 return document;
             }
 
@@ -54,7 +53,7 @@ const server = new Server({
             if(err.response?.status === 404)    {
                 return document;
             }
-            console.error(`❌ [Hocuspocus] Failed to fetch doc ${documentName}:`, err.message);
+            console.error(`[Hocuspocus] Failed to fetch doc ${documentName}:`, err.message);
             throw err;
         }
     },

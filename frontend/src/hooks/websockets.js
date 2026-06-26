@@ -3,8 +3,8 @@ import {useEffect, useState, useRef} from "react";
 import {fetchWithAuth} from "../utils/api";
 
 export function useWebsocket(url)   {
-    const [conState, setConState] = useState(false);
     const [data, setData] = useState(null);
+    const [isConnected, setIsConnected] = useState(false);
     const wsRef = useRef(null);
     const heartBeatRef = useRef(null);
     const reconnCountRef = useRef(0);
@@ -12,21 +12,22 @@ export function useWebsocket(url)   {
     const missedPongRef = useRef(0);
 
     useEffect(() => {
+        let isMounted = true;
         
         const initiateConn = async (url) =>    {
             try {
 
-                const res = await fetchWithAuth("http://127.0.0.1:8000/api/ping/", {
+                const res = await fetchWithAuth(`${import.meta.env.VITE_API_URL}/api/ping/`, {
                 method: "GET"
                 });
     
                 if(res.ok)  {
+                  if (!isMounted) return;
                   const wsConn = new WebSocket(url);
                   wsRef.current = wsConn;
 
-                  wsConn.onopen = (event) =>    {
-                      setConState(true);
-
+                  wsConn.onopen = () =>    {
+                      setIsConnected(true);
                       if(wsConn.readyState === WebSocket.OPEN) {
                         reconnCountRef.current = 0;
                         missedPongRef.current = 0;
@@ -61,11 +62,16 @@ export function useWebsocket(url)   {
                   }
 
                   wsConn.onclose = (event) =>  {
+                    setIsConnected(false);
                     clearInterval(heartBeatRef.current);
-                    setConState(false);
 
                     if(event.code === 4000)   {
                         setData({type: "room_ended"});
+                        wsRef.current = null;
+                        return;
+                    }
+                    else if (event.code === 4001) {
+                        setData({type: "force_disconnected"});
                         wsRef.current = null;
                         return;
                     }
@@ -88,7 +94,6 @@ export function useWebsocket(url)   {
             }
             catch(e)   {
                 console.error(e);
-                setConState(false);
 
                 let waitTime = Math.min( (2 ** reconnCountRef.current) * 1000, 10000);
                 
@@ -106,6 +111,7 @@ export function useWebsocket(url)   {
         initiateConn(url);
 
         return () => {
+            isMounted = false;
             clearTimeout(timerRef.current);
             clearInterval(heartBeatRef.current);
             if(wsRef.current)   {
@@ -116,7 +122,7 @@ export function useWebsocket(url)   {
 
     }, [url]);
 
-    return {data, sendMessage: (details, eventType) => {
+    return {data, isConnected, sendMessage: (details, eventType) => {
             if(wsRef.current && wsRef.current.readyState === WebSocket.OPEN)   {
                 wsRef.current.send(JSON.stringify({data: details, type: eventType}))
             }

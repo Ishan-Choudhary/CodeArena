@@ -1,5 +1,3 @@
-// src/utils/api.js
-
 import { useAuthStore } from '../store/authStore';
 
 export function getCookie(name) {
@@ -17,9 +15,7 @@ export function getCookie(name) {
   return cookieValue;
 }
 
-/**
- * Custom fetch wrapper that includes credentials for cookie-based JWT auth.
- */
+
 export async function fetchWithAuth(url, options = {}) {
   const headers = {
     'Content-Type': 'application/json',
@@ -30,10 +26,9 @@ export async function fetchWithAuth(url, options = {}) {
   let response = await fetch(url, { 
     ...options, 
     headers,
-    credentials: 'include' // crucial for sending cookies
+    credentials: 'include'
   });
 
-  // EDIT by (Ishan-Choudhary): django-cookiejwt provides a RefreshToken MIDDLEWARE. So your token is automatically refreshed. If 401 is returned that means that token has also been blacklist. So you directly logout now
   if (response.status === 401) {
     
     const retryheaders = {
@@ -56,14 +51,9 @@ export async function fetchWithAuth(url, options = {}) {
   return response;
 }
 
-/**
- * Fetches the initial CSRF token from the backend.
- * Should be called once when the application initializes.
- */
 export async function fetchCsrfToken() {
   try {
-    // We don't use fetchWithAuth here to avoid infinite loops and we just need a plain fetch
-    const response = await fetch('http://127.0.0.1:8000/api/csrf/', {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/api/csrf/`, {
       method: 'GET',
       credentials: 'include'
     });

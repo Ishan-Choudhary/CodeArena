@@ -3,6 +3,7 @@ from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from django.core import serializers
+from django.core.cache import cache
 
 from apps.rooms.models import Room
 from apps.executor.utils import run_code
@@ -56,10 +57,25 @@ def get_submission_info(room_id):
     return json_serialized
 
 class BaseRoomConsumer(AsyncWebsocketConsumer):
+    @property
+    def cache_key(self):
+        return f"room_{self.room_name}_user_{self.user.username}_channel"
+
     async def disconnect(self, close_code):
+        active_channel = await cache.aget(self.cache_key)
+        if active_channel == self.channel_name:
+            await cache.adelete(self.cache_key)
+
         await self.channel_layer.group_discard(
             self.room_group_name, self.channel_name
         )
+
+    async def force_disconnect(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "error", 
+            "message": "You connected from another device. Disconnecting."
+        }))
+        await self.close(code=4001)
 
     async def receive(self, text_data):
         try:
@@ -170,7 +186,14 @@ class MockModeRoomConsumer(BaseRoomConsumer):
         if(user_role == "denied"):
             await self.close()
             return
-    
+
+        existing_channel = await cache.aget(self.cache_key)
+        if existing_channel:
+            await self.channel_layer.send(existing_channel, {
+                "type": "force_disconnect"
+            })
+        await cache.aset(self.cache_key, self.channel_name, timeout=86400)
+
         await self.accept()
         await self.channel_layer.group_add(
             self.room_group_name, self.channel_name
@@ -191,6 +214,14 @@ class AiRoomConsumer(BaseRoomConsumer):
         self.room_group_name = f"room_{self.room_name}"
         self.user = self.scope["user"]
 
+        existing_channel = await sync_to_async(cache.get)(self.cache_key)
+
+        if existing_channel:
+            await self.channel_layer.send(existing_channel, {
+                "type": "force_disconnect" # Maps to force_disconnect method in BaseRoomConsumer
+            })
+
+        await cache.aset(self.cache_key, self.channel_name, timeout=86400)
         await self.accept()
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
 

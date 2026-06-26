@@ -40,7 +40,7 @@ export default function RoomSettingsPage() {
     try {
       setLoading(true);
 
-      const res = await fetchWithAuth("http://127.0.0.1:8000/api/rooms/", {
+      const res = await fetchWithAuth(`${import.meta.env.VITE_API_URL}/api/rooms/`, {
         "method": "POST",
         "body": JSON.stringify(
           {
@@ -81,17 +81,8 @@ export default function RoomSettingsPage() {
         <Link to="/problems" className="font-medium text-xl text-text-primary hover:text-text-primary transition-colors cursor-pointer">
           code<span className="text-accent">arena</span>
         </Link>
-        <nav className="flex gap-8 text-sm">
-          <Link to="/problems" className="text-text-primary font-medium cursor-pointer">problems</Link>
-          <span className="text-text-secondary hover:text-text-primary transition-colors cursor-pointer">sessions</span>
-        </nav>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center text-sm font-medium text-accent-light cursor-pointer hover:text-accent transition-colors">
-            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-accent-light font-bold mr-2">
-              {username ? username.charAt(0).toUpperCase() : 'U'}
-            </div>
-          </div>
-        </div>
+
+
       </header>
 
       <main className="flex-1 flex flex-col items-center p-8 mt-8">
@@ -165,7 +156,8 @@ export default function RoomSettingsPage() {
 
               <button 
                 onClick={handleStartSession}
-                className="w-full py-3 bg-accent hover:bg-accent-dark text-accent-light border-none rounded-lg text-sm font-medium cursor-pointer transition-colors mt-4"
+                disabled={loading}
+                className="w-full py-3 bg-accent hover:bg-accent-dark text-accent-light border-none rounded-lg text-sm font-medium cursor-pointer transition-colors mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 start session
               </button>

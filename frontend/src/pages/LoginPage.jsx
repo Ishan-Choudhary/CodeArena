@@ -15,7 +15,7 @@ export default function LoginPage({ isRegister = false }) {
     e.preventDefault();
     setLoading(true);
 
-    const url = isRegister ? 'http://127.0.0.1:8000/api/auth/users/' : 'http://127.0.0.1:8000/api/jwt/token/';
+    const url = isRegister ? `${import.meta.env.VITE_API_URL}/api/auth/users/` : `${import.meta.env.VITE_API_URL}/api/jwt/token/`;
     const body = isRegister 
       ? { email, password, username } 
       : { email, password };
@@ -46,7 +46,7 @@ export default function LoginPage({ isRegister = false }) {
 
       if (isRegister) {
         // Automatically login after register
-        const loginRes = await fetch('http://127.0.0.1:8000/api/jwt/token/', {
+        const loginRes = await fetch(`${import.meta.env.VITE_API_URL}/api/jwt/token/`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -65,7 +65,7 @@ export default function LoginPage({ isRegister = false }) {
         }
       } else {
         // Login successful, fetch user profile to get username
-        const userRes = await fetchWithAuth('http://127.0.0.1:8000/api/auth/users/me/');
+        const userRes = await fetchWithAuth(`${import.meta.env.VITE_API_URL}/api/auth/users/me/`);
         let fetchedUsername = 'user';
         if (userRes.ok) {
           const userData = await userRes.json();

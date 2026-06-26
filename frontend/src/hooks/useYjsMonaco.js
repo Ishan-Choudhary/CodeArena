@@ -4,7 +4,7 @@ import { HocuspocusProvider } from "@hocuspocus/provider";
 import { MonacoBinding } from "y-monaco";
 import { useAuthStore } from "../store/authStore";
 
-export const useYjsMonaco = (roomCode) => {
+export const useYjsMonaco = (roomCode, isConnected = true) => {
     const editorRef = useRef(null);
     const yDocRef = useRef(null);
     const yTextRef = useRef(null);
@@ -18,9 +18,10 @@ export const useYjsMonaco = (roomCode) => {
 
         const yDoc = new Y.Doc();
         const provider = new HocuspocusProvider({
-            url: "ws://127.0.0.1:1234",
+            url: import.meta.env.VITE_YJS_WS_URL || "ws://127.0.0.1:1234",
             name: roomCode,
             document: yDoc,
+            connect: false,
         });
 
         yDocRef.current = yDoc;
@@ -40,7 +41,17 @@ export const useYjsMonaco = (roomCode) => {
         };
     }, [roomCode]);
 
-    const setupBinding = (editor, yDoc, provider) => {
+    useEffect(() => {
+        if (!providerRef.current) return;
+        
+        if (isConnected) {
+            providerRef.current.connect();
+        } else {
+            providerRef.current.disconnect();
+        }
+    }, [isConnected]);
+
+    function setupBinding(editor, yDoc, provider) {
         if (bindingRef.current) return;
 
         const model = editor.getModel();

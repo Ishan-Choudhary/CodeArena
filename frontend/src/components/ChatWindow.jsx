@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Send } from "lucide-react";
 
-export default function ChatWindow({ chatMessages, chatInput, setChatInput, handleSendMessage, currentUsername, partnerUsername }) {
+export default function ChatWindow({ chatMessages, chatInput, setChatInput, handleSendMessage, currentUsername, partnerUsername, waitingForInterviewer }) {
     const endOfMessagesRef = useRef(null);
 
     useEffect(() => {

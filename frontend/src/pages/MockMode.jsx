@@ -1,4 +1,4 @@
-    import { useEffect, useState, useRef } from "react";
+    import { useEffect, useState } from "react";
     import { useLocation, useNavigate } from "react-router-dom";
     import {toast} from "react-hot-toast";
 
@@ -19,11 +19,11 @@
         const roomDetails = location.state?.roomDetails;
         const problem = location.state?.problem;
 
-        const {data, sendMessage} = useWebsocket(`ws://127.0.0.1:8000/ws/room/${roomDetails?.code}/`)
+        const {data, isConnected, sendMessage} = useWebsocket(`${import.meta.env.VITE_WS_URL}/ws/room/${roomDetails?.code}/`)
         const [loading, setLoading] = useState(false);
         const [submitLoading, setSubmtiLoading] = useState(false);
 
-        const { handleEditorMount, getCode } = useYjsMonaco(roomDetails?.code);
+        const { handleEditorMount, getCode } = useYjsMonaco(roomDetails?.code, isConnected);
         
         const username = useAuthStore(state => state.username)
         const [participantJoined, setParticipantJoined] = useState(false);
@@ -45,6 +45,10 @@
                 toast.success("The session has been ended.");
                 navigate("/");
             }
+            else if(data?.type === "force_disconnected") {
+                toast.error("Session transferred to another device.");
+                navigate("/");
+            }
             else if(data?.type === "submission.loading")    {
                 setSubmtiLoading(true);
             }
@@ -63,7 +67,7 @@
             if(loading) return;
             setLoading(true);
             try {
-                const res = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomDetails?.code}/end/`, {
+                const res = await fetchWithAuth(`${import.meta.env.VITE_API_URL}/api/rooms/${roomDetails?.code}/end/`, {
                     method: "POST"
                 })
         
@@ -99,7 +103,7 @@
 
         return (
             <div className="h-screen flex flex-col bg-bg-base overflow-hidden relative">
-                <div className={`absolute z-50 h-screen w-full  flex-col items-center justify-center overflow-hidden bg-bg-base/50 ${participantJoined ? "hidden" : "flex"}`}>
+                <div className={`absolute top-0 left-0 z-50 h-screen w-full flex-col items-center justify-center overflow-hidden bg-bg-base/50 ${participantJoined ? "hidden" : "flex"}`}>
                     <div className="box-content bg-accent rounded-xl p-4 text-center">
                         <div className="flex items-center gap-2 h-auto">
                             {
@@ -123,7 +127,9 @@
                         <span className="text-text-secondary">{problem?.title} &middot; {problem?.difficulty.toLowerCase()}</span>
                     </div>
                     <div className="flex gap-4 text-sm items-center">
-                        <button className="text-text-secondary border-1 px-4 py-2 rounded-xl border-bg-border" onClick={handleEndSesh}>end session</button>
+                        {roomDetails?.host === username && (
+                            <button className="text-text-secondary border-1 px-4 py-2 rounded-xl border-bg-border" onClick={handleEndSesh}>end session</button>
+                        )}
                     </div>
                 </header>
                 <div className="flex-1 flex overflow-hidden min-h-0">
@@ -139,6 +145,7 @@
                                 language={roomDetails?.language.toLowerCase()}
                                 theme="vs-dark"
                                 onMount={handleEditorMount}
+                                options={{ readOnly: !participantJoined }}
                             />
                         </div>
                         <div className="flex-[2] flex flex-col pb-6 min-h-0">

@@ -10,8 +10,7 @@ export const useAuthStore = create(
       logout: () => set({ username: '', isAuthenticated: false }),
     }),
     {
-      name: 'auth-storage', // name of the item in the storage (must be unique)
-      // getStorage: () => localStorage, (default is localStorage)
+      name: 'auth-storage',
     }
   )
 );

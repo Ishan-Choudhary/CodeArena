@@ -1,4 +1,4 @@
-    import { useEffect, useState, useRef } from "react";
+    import { useEffect, useState } from "react";
     import { useLocation, useNavigate } from "react-router-dom";
     import {toast} from "react-hot-toast";
 
@@ -19,15 +19,13 @@
         const roomDetails = location.state?.roomDetails;
         const problem = location.state?.problem;
 
-        const {data, sendMessage} = useWebsocket(`ws://127.0.0.1:8000/ws/practice/${roomDetails?.code}/`)
+        const {data, isConnected, sendMessage} = useWebsocket(`${import.meta.env.VITE_WS_URL}/ws/practice/${roomDetails?.code}/`)
         const [loading, setLoading] = useState(false);
         const [submitLoading, setSubmtiLoading] = useState(false);
 
-        const { handleEditorMount, getCode } = useYjsMonaco(roomDetails?.code);
+        const { handleEditorMount, getCode } = useYjsMonaco(roomDetails?.code, isConnected);
         
         const username = useAuthStore(state => state.username)
-        const [participantJoined, setParticipantJoined] = useState(false);
-        const [partnerUsername, setPartnerUsername] = useState("");
         const [chatMessages, setChatMessages] = useState([]);
         const [chatInput, setChatInput] = useState("");
         const [latestResult, setLatestResult] = useState(null);
@@ -39,6 +37,10 @@
         useEffect(() => {
             if(data?.type === "room_ended") {
                 toast.success("The session has been ended.");
+                navigate("/");
+            }
+            else if(data?.type === "force_disconnected") {
+                toast.error("Session transferred to another device.");
                 navigate("/");
             }
             else if(data?.type === "submission.loading")    {
@@ -79,7 +81,7 @@
             if(loading) return;
             setLoading(true);
             try {
-                const res = await fetchWithAuth(`http://127.0.0.1:8000/api/rooms/${roomDetails?.code}/end/`, {
+                const res = await fetchWithAuth(`${import.meta.env.VITE_API_URL}/api/rooms/${roomDetails?.code}/end/`, {
                     method: "POST"
                 })
         
@@ -100,7 +102,6 @@
 
         const handleSubmit = async () =>   {
             const codeContent = getCode();
-            console.log(codeContent);
             setSubmtiLoading(true);
             sendMessage({code: codeContent}, "submission.request");
 
@@ -149,7 +150,7 @@
                                 setChatInput={setChatInput}
                                 handleSendMessage={handleSendMessage}
                                 currentUsername={username}
-                                partnerUsername={partnerUsername || "Partner"}
+                                partnerUsername={"Partner"}
                                 waitingForInterviewer={isWaitingForLLM}
                             />
                         </div>

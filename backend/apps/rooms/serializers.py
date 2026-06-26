@@ -4,6 +4,7 @@ from apps.executor.models import Submission
 from apps.interviewer.models import InterviewMessage
 
 class RoomSerializer(ModelSerializer):
+    host = SlugRelatedField("username", read_only=True)
     class Meta:
         model = Room
         exclude = ["ended_at", "participant"]
