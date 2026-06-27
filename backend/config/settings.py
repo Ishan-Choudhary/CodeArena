@@ -143,7 +143,7 @@ AUTH_USER_MODEL = "auth_app.User"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'django_cookiejwt.authentication.CookieJWTAuthentication',
+        'apps.auth_app.authentication.CSRFEnforcedCookieJWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',

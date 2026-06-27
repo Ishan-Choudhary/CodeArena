@@ -98,3 +98,87 @@ class TestAuthFlow:
         
         cookie = response.cookies[token_key]
         assert cookie.value == '' or int(cookie.get('max-age', -1)) == 0 or cookie.get('expires')
+
+    def test_login_invalid_credentials(self, api_client, create_user):
+        user = create_user()
+        
+        url = "/api/jwt/token/"
+        data = {
+            "email": user.email,
+            "password": "wrongpassword123!"
+        }
+        
+        response = api_client.post(url, data, format='json')
+        
+        # Assert it fails with 401 Unauthorized
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        
+        # Assert no authentication cookies are returned
+        cookie_keys = response.cookies.keys()
+        assert not any(key in cookie_keys for key in ['access_token', 'jwt', 'access'])
+
+    def test_login_inactive_user(self, api_client, create_user):
+        # Create a user but set them to inactive
+        user = create_user(is_active=False)
+        
+        url = "/api/jwt/token/"
+        data = {
+            "email": user.email,
+            "password": "securepassword123"
+        }
+        
+        response = api_client.post(url, data, format='json')
+        
+        # Should fail with 401 Unauthorized
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        
+        # Ensure no cookie is set
+        cookie_keys = response.cookies.keys()
+        assert not any(key in cookie_keys for key in ['access_token', 'jwt', 'access'])
+
+    def test_csrf_enforcement_on_protected_endpoints(self, create_user):
+        # We need a fresh client that explicitly enforces CSRF
+        csrf_client = APIClient(enforce_csrf_checks=True)
+        user = create_user()
+        
+        # 1. Login to get the auth cookie
+        login_url = "/api/jwt/token/"
+        csrf_client.post(login_url, {"email": user.email, "password": "securepassword123"}, format='json')
+        
+        # 2. Try to hit a POST, PUT, or PATCH endpoint without sending a CSRF token in headers.
+        # We will try to update our own username via Djoser's /api/auth/users/me/ endpoint.
+        me_url = "/api/auth/users/me/"
+        data = {"username": "newusername"}
+        response = csrf_client.put(me_url, data, format='json')
+        
+        # Because we didn't include the X-CSRFToken header, Django's CSRF middleware 
+        # should intercept and reject this request with a 403 Forbidden.
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_token_blacklist_enforcement(self, api_client, create_user):
+        user = create_user()
+        
+        # 1. Login to get tokens
+        login_url = "/api/jwt/token/"
+        response = api_client.post(login_url, {"email": user.email, "password": "securepassword123"}, format='json')
+        
+        # Extract the refresh token before logging out
+        cookie_keys = response.cookies.keys()
+        refresh_key = next((key for key in ['refresh_token', 'refresh'] if key in cookie_keys), None)
+        assert refresh_key is not None
+        stolen_refresh_token = response.cookies[refresh_key].value
+        
+        # 2. Logout (This blacklists the token in the database)
+        logout_url = "/api/jwt/token/blacklist/"
+        api_client.post(logout_url, format='json')
+        
+        # 3. Simulate an attacker trying to use the stolen refresh token
+        # We manually inject the stolen token back into the test client's cookies
+        api_client.cookies.load({refresh_key: stolen_refresh_token})
+        
+        # Try to hit the blacklist endpoint again (or refresh endpoint if you had one).
+        # Since it's already blacklisted, the server should actively reject it.
+        response2 = api_client.post(logout_url, format='json')
+        
+        # It should return a 400 Bad Request or 401 Unauthorized for a blacklisted token
+        assert response2.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_401_UNAUTHORIZED]
