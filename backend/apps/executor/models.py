@@ -19,5 +19,7 @@ class Submission(models.Model):
     code = models.TextField()
     stdout = models.TextField(blank=True)
     status = models.CharField(choices=Status, default=Status.ERROR)
-    execution_time = models.IntegerField(null = True, blank = True)
+    execution_time = models.DecimalField(max_digits=4, decimal_places=2, null=True)
+    expected_output = models.TextField(blank=True, null=True)
+    actual_output = models.TextField(blank=True, null=True)
     submitted_at = models.DateTimeField(auto_now_add=True)

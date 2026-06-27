@@ -20,7 +20,7 @@ class ViewRoomSerializer(ModelSerializer):
 class SubmissionSerializer(ModelSerializer):
     class Meta:
         model = Submission
-        fields = ["stdout", "status", "execution_time", "submitted_at"]
+        fields = ["stdout", "status", "execution_time", "submitted_at", "expected_output", "actual_output"]
 
 class ChatSerializer(ModelSerializer):
     class Meta:

@@ -1,5 +1,4 @@
 def run_code(test_cases, code, order_matters, input_types, output_type, language):
-    import docker
     import json
     import subprocess
 
@@ -101,7 +100,7 @@ for case in test_cases:
                 end_time = time.perf_counter_ns()
 
                 user_stdout = f.getvalue()
-                execution_time = (end_time - start_time) // 1000000
+                execution_time = (end_time - start_time) / 1000000
                 if output_type.get("type") == "linked_list":
                     output = linked_to_list(output)
                 elif output_type.get("type") == "binary_tree":

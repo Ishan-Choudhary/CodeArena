@@ -99,8 +99,6 @@ export function useReplayManager (replayData, playbackBounds)   {
                     const mergedUpdate = Y.mergeUpdates(chunksToApply);
                     Y.applyUpdate(yDocRef.current, mergedUpdate);
                     lastAppliedRef.current = i;
-
-                    console.log("TRAP 1 - APPLIED UPDATE. Yjs Text is:", yDocRef.current.getText("monaco").toString());
                 }
                 catch (err) {
                     console.error("failed to apply live update: ", err);
@@ -140,10 +138,6 @@ export function useReplayManager (replayData, playbackBounds)   {
     }
 
     const handleEditorMount = (editor, monaco) =>   {
-        console.log("TRAP 2 - MONACO MOUNTING.");
-        console.log("--> YJS holds:", yDocRef.current?.getText("monaco").toString());
-        console.log("--> Monaco holds:", editor.getValue());
-
         if(bindingRef.current && editorRef.current !== editor)  {
             bindingRef.current.destroy();
             bindingRef.current = null;
@@ -159,14 +153,6 @@ export function useReplayManager (replayData, playbackBounds)   {
 
 
     useEffect(() => {isPlayRef.current = isPlaying}, [isPlaying])
-
-    useEffect(() => {
-        setTimeout(() => {
-            console.log("TRAP 3 - 2 SECONDS LATER.");
-            console.log("--> Final YJS:", yDocRef.current?.getText("monaco").toString());
-            console.log("--> Final Monaco:", editorRef.current?.getValue());
-        }, 2000);
-    }, []);
     
     const togglePlayPause = () => setIsPlaying(!isPlaying);
 

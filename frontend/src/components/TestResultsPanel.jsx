@@ -21,7 +21,7 @@ export default function TestResultsPanel({ submitLoading, latestResult, submissi
 
                         {latestResult.execution_time && latestResult.execution_time !== -1 && (
                             <span className="text-sm text-text-secondary">
-                                Time: <span className="text-text-primary">{latestResult.execution_time.toFixed(2)} ms</span>
+                                Time: <span className="text-text-primary">{latestResult?.execution_time} ms</span>
                             </span>
                         )}
 
@@ -46,11 +46,11 @@ export default function TestResultsPanel({ submitLoading, latestResult, submissi
 
                         {latestResult.status === 'wrong_answer' && (
                             <>
-                                {latestResult.output !== undefined && (
+                                {latestResult.actual_output !== undefined && (
                                     <div className="mt-2">
                                         <p className="text-xs text-text-secondary mb-1">Function Returned:</p>
                                         <pre className="text-sm bg-bg-elevated border border-bg-border p-3 rounded-md font-mono text-error overflow-x-auto">
-                                            {JSON.stringify(latestResult.output)}
+                                            {JSON.stringify(latestResult.actual_output)}
                                         </pre>
                                     </div>
                                 )}
@@ -87,7 +87,7 @@ export default function TestResultsPanel({ submitLoading, latestResult, submissi
                                 </div>
                                 {sub.status === 'accepted' ? (
                                     <div className="text-text-secondary text-xs">
-                                        Execution Time: {sub.execution_time.toFixed(2)} ms
+                                        Execution Time: {sub?.execution_time} ms
                                     </div>
                                 ) : (
                                     <div className="text-text-secondary text-xs truncate">

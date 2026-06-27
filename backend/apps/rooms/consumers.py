@@ -32,8 +32,8 @@ def get_room_details(room_name):
     return Room.objects.select_related("problem").filter(code=room_name).first()
 
 @database_sync_to_async
-def save_submission(error_type, user, room_id, codeContent, execution_ms=None, stdout=None):
-    submission_instance = Submission(room_id=room_id, user=user, status=error_type, code=codeContent)
+def save_submission(error_type, user, room_id, codeContent, execution_ms=None, stdout=None, expected_output="", actual_output=""):
+    submission_instance = Submission(room_id=room_id, user=user, status=error_type, code=codeContent, expected_output=expected_output, actual_output=actual_output)
 
     if execution_ms:
         submission_instance.execution_time = execution_ms
@@ -70,13 +70,6 @@ class BaseRoomConsumer(AsyncWebsocketConsumer):
             self.room_group_name, self.channel_name
         )
 
-    async def force_disconnect(self, event):
-        await self.send(text_data=json.dumps({
-            "type": "error", 
-            "message": "You connected from another device. Disconnecting."
-        }))
-        await self.close(code=4001)
-
     async def receive(self, text_data):
         try:
             data = json.loads(text_data)
@@ -96,6 +89,14 @@ class BaseRoomConsumer(AsyncWebsocketConsumer):
 
         except json.JSONDecodeError:
             pass
+
+    async def force_disconnect(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "error", 
+            "message": "You connected from another device. Disconnecting."
+        }))
+        await self.close(code=4001)
+
 
     async def participant_joined(self, event):
         if(event.get("sender_channel_name") == self.channel_name):
@@ -152,13 +153,13 @@ class BaseRoomConsumer(AsyncWebsocketConsumer):
 
             else:
                 failed_case = failed_cases[0]
-                submission_instance = await save_submission(error_type=Submission.Status.WRONG, room_id = room_obj.id, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"])
+                submission_instance = await save_submission(error_type=Submission.Status.WRONG, room_id = room_obj.id, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"], expected_output=failed_case.get("expected"), actual_output=failed_case.get("output"))
 
                 await self.channel_layer.group_send(self.room_group_name, {
                     "type": "submission.result",
                     "status": submission_instance.status,
                     "traceback": failed_case.get("traceback", ""),
-                    "output": failed_case.get("output"),
+                    "actual_output": failed_case.get("output"),
                     "stdout": failed_case.get("stdout", ""),
                     "expected_output": failed_case.get("expected")
                 })
@@ -218,7 +219,7 @@ class AiRoomConsumer(BaseRoomConsumer):
 
         if existing_channel:
             await self.channel_layer.send(existing_channel, {
-                "type": "force_disconnect" # Maps to force_disconnect method in BaseRoomConsumer
+                "type": "force_disconnect"
             })
 
         await cache.aset(self.cache_key, self.channel_name, timeout=86400)
@@ -293,13 +294,13 @@ class AiRoomConsumer(BaseRoomConsumer):
 
         else:
             failed_case = failed_cases[0]
-            submission_instance = await save_submission(error_type=Submission.Status.WRONG, room_id = room_obj.id, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"])
+            submission_instance = await save_submission(error_type=Submission.Status.WRONG, room_id = room_obj.id, codeContent=code, execution_ms=avg_execution_time, stdout=failed_case.get("stdout", ""), user=self.scope["user"], expected_output=failed_case.get("expected"), actual_output=failed_case.get("output"))
 
             await self.channel_layer.group_send(self.room_group_name, {
                 "type": "submission.result",
                 "status": submission_instance.status,
                 "traceback": failed_case.get("traceback", ""),
-                "output": failed_case.get("output"),
+                "actual_output": failed_case.get("output"),
                 "stdout": failed_case.get("stdout", ""),
                 "expected_output": failed_case.get("expected")
             })
