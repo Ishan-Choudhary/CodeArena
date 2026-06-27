@@ -1,5 +1,5 @@
 
-import random, string
+import secrets, string
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
@@ -35,7 +35,7 @@ class CreateRoom(ListCreateAPIView):
     def generate_code(self):
         chars = string.ascii_uppercase + string.digits
         while True:
-            code = "".join(random.choices(chars, k=6))
+            code = "".join(secrets.choice(chars) for _ in range(6))
 
             if not Room.objects.filter(code = code).exists():
                 return code

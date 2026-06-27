@@ -136,7 +136,6 @@ Before every response, determine:
 2. What is the single most valuable next question or observation.
 3. Respond only with that.
 """
-    #TODO BUILD RESPONSE STREAMING
     
     system_instruction, chat_logs = await build_context(SYSTEM_PROMPT, problem_statement,current_code, submission_info, room_id)
     channel_layer = get_channel_layer()
@@ -157,7 +156,6 @@ Before every response, determine:
         async for chunk in response_stream:
             if chunk.text:
                 ai_resp += chunk.text
-                print(chunk.text)
                 await channel_layer.group_send(group_name, {
                     "type": "chat.stream_chunk",
                     "text_so_far": ai_resp

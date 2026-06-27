@@ -10,7 +10,6 @@ def get_user_from_jwt(access_token):
         user = authenticator.get_user(validated_token)
         return user
     except Exception as e:
-        print(f"JWT Auth failed: {e}")
         return AnonymousUser()
     
 class JWTAuthCookieMiddleware:
