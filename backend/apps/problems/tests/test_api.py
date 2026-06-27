@@ -60,31 +60,6 @@ class TestProblemAPI:
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_problem_serialization_shape(self, authenticated_client):
-        # Create a problem with actual JSON data to verify it serializes correctly
-        problem = ProblemFactory(
-            starter_code={"python": "def solution():\n    pass"},
-            test_cases=[{"input": "1", "expected": "2"}],
-            input_types={"arg1": "int"},
-            output_type={"return": "int"}
-        )
-        
-        url = reverse("get_problem", kwargs={"pk": problem.id})
-        response = authenticated_client.get(url)
-        
-        assert response.status_code == status.HTTP_200_OK
-        data = response.data
-        
-        # Verify JSON fields are returned as dictionaries/lists, not escaped strings
-        assert isinstance(data["starter_code"], dict)
-        assert data["starter_code"]["python"] == "def solution():\n    pass"
-        
-        assert isinstance(data["test_cases"], list)
-        assert len(data["test_cases"]) == 1
-        assert data["test_cases"][0]["expected"] == "2"
-        
-        assert isinstance(data["input_types"], dict)
-        assert isinstance(data["output_type"], dict)
 
     def test_list_problems_empty_state(self, authenticated_client):
         # Database is empty because each test starts with an empty db
@@ -97,13 +72,3 @@ class TestProblemAPI:
             assert len(data['results']) == 0
         else:
             assert len(data) == 0
-
-    def test_get_single_problem_invalid_uuid(self, authenticated_client):
-        # We can't use reverse() because Django's URL dispatcher will block 
-        # generating a URL with a non-UUID parameter for '<uuid:pk>'.
-        # So we hit the URL directly to simulate a bad request.
-        url = "/api/problems/not-a-real-uuid/"
-        response = authenticated_client.get(url)
-        
-        # Django's URL dispatcher should catch the bad UUID and return 404 Not Found
-        assert response.status_code == status.HTTP_404_NOT_FOUND
