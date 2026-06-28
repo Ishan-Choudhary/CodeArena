@@ -3,6 +3,7 @@ from channels.db import database_sync_to_async
 from google import genai
 from google.genai import types
 from channels.layers import get_channel_layer
+from google.genai.errors import APIError
 
 from .models import InterviewMessage
 
@@ -14,7 +15,7 @@ def last_n_chat_logs(n, room_id):
     for log in chats:
         role_mapping = "user" if log.role == InterviewMessage.Role.USER else "model"
 
-        if formatted_logs and formatted_logs[-1]["role"] == "role_mapping":
+        if formatted_logs and formatted_logs[-1]["role"] == role_mapping:
             formatted_logs[-1]["parts"][0]["text"] += f"\n\n{log.content}"
         else: 
             formatted_logs.append({"role": role_mapping, "parts": [{"text": log.content}]})
@@ -143,27 +144,47 @@ Before every response, determine:
 
     await channel_layer.group_send(group_name, {"type": "chat.stream_start"})
 
-    async with genai.Client().aio as aclient:
-        response_stream = await aclient.models.generate_content_stream(
-            model="gemini-2.5-flash",
-            contents=chat_logs,
-            config = types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.4
+    try:
+        async with genai.Client().aio as aclient:
+            response_stream = await aclient.models.generate_content_stream(
+                model="gemini-2.5-flash",
+                contents=chat_logs,
+                config = types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.4
+                )
             )
-        )
 
-        async for chunk in response_stream:
-            if chunk.text:
-                ai_resp += chunk.text
-                await channel_layer.group_send(group_name, {
-                    "type": "chat.stream_chunk",
-                    "text_so_far": ai_resp
-                })
+            async for chunk in response_stream:
+                if chunk.text:
+                    ai_resp += chunk.text
+                    await channel_layer.group_send(group_name, {
+                        "type": "chat.stream_chunk",
+                        "text_so_far": ai_resp
+                    })
+        
+            await channel_layer.group_send(group_name, {
+                "type": "chat.stream_end",
+                "room_id": str(room_id),
+                "full_text": ai_resp
+            })
 
-    
+    except APIError as e:
+        error_msg = "An unexpected error occurred."
+        
+        if e.code == 429:
+            if "per day" in str(e).lower():
+                error_msg = "Daily capacity reached. The interviewer will return tomorrow."
+            else:
+                error_msg = "The interviewer is processing too many thoughts right now. Please wait a minute and try again."
+        elif e.code == 503:
+            error_msg = "Interviewer servers are at peak capacity. Please try your response again."
+        elif e.code == 500:
+            error_msg = "The interviewer encountered a fatal error. Please try again."
+        elif e.code == 504:
+            error_msg = "The interviewer took too long to respond. Please try again."
+
         await channel_layer.group_send(group_name, {
-            "type": "chat.stream_end",
-            "room_id": str(room_id),
-            "full_text": ai_resp
+            "type": "chat.stream_error",
+            "error_message": error_msg
         })

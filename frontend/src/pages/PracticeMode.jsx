@@ -74,6 +74,10 @@
                 })
                 setIsWaitingForLLM(false);
             }
+            else if(data?.type === "chat.stream_error") {
+                setIsWaitingForLLM(false);
+                toast.error(data.error_message);
+            }
         }, [data, navigate]);
 
 
