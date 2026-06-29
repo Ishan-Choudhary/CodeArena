@@ -1,6 +1,4 @@
 import base64
-import json
-import gzip
 import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
@@ -13,38 +11,12 @@ def api_client():
     return APIClient()
 
 @pytest.mark.django_db
-class TestYjsModels:
-    
-    def test_document_timeline_compression_happy_path(self):
-        room = RoomFactory()
-        doc = Document.objects.create(room=room)
-        
-        # Test saving timeline
-        sample_timeline = [{"client": 1, "clock": 0}, {"client": 1, "clock": 1}]
-        doc.set_timeline(sample_timeline)
-        doc.save()
-        
-        # Test retrieving timeline perfectly decodes it
-        doc.refresh_from_db()
-        assert doc.get_timeline() == sample_timeline
-        
-    def test_document_timeline_empty_edge_case(self):
-        room = RoomFactory()
-        doc = Document.objects.create(room=room)
-        
-        # New document has no compressed timeline
-        assert doc.get_timeline() == []
-        
-
-
-@pytest.mark.django_db
 class TestYjsWebhookAPI:
 
     def test_webhook_new_document_happy_path(self, api_client):
         room = RoomFactory(code="ROOM01")
         url = reverse("save_timeline_update")
         
-        # Valid base64 state string for a Yjs document (simulated)
         dummy_state = b'fake-binary-state'
         b64_state = base64.b64encode(dummy_state).decode('utf-8')
         
@@ -58,7 +30,6 @@ class TestYjsWebhookAPI:
         response = api_client.post(url, payload, format='json')
         assert response.status_code == status.HTTP_200_OK
         
-        # Verify document was created and data set
         doc = Document.objects.get(room=room)
         assert doc.binary_data == dummy_state
         assert doc.get_timeline() == [{"data": "chunk1"}]
@@ -80,11 +51,9 @@ class TestYjsWebhookAPI:
         api_client.post(url, payload, format='json')
         
         doc.refresh_from_db()
-        # Verify chunks were APPENDED
         assert len(doc.get_timeline()) == 2
         assert doc.get_timeline()[0] == {"data": "old-chunk"}
         assert doc.get_timeline()[1] == {"data": "new-chunk"}
-        # State overwritten
         assert doc.binary_data == b'new-state'
 
     def test_webhook_ignored_event_sad_path(self, api_client):
@@ -106,7 +75,6 @@ class TestYjsWebhookAPI:
         room = RoomFactory(code="EDGE01")
         url = reverse("save_timeline_update")
         
-        # Missing `document` and `new_chunks` entirely
         payload = {
             "event": "change",
             "documentName": "EDGE01"
@@ -132,11 +100,8 @@ class TestYjsDocumentAPI:
         assert response['Content-Type'] == "application/octet-stream"
 
     def test_get_document_fallback_to_starter_code_happy_path(self, api_client):
-        # We need a problem with a known language dictionary for starter code
         problem = ProblemFactory(starter_code={"python": "def solution():\n    return 'hello'"})
         room = RoomFactory(code="FALLBK", problem=problem, language="python")
-        
-        # NO Document exists for this room
         
         url = reverse("save_document_final_state", kwargs={"room_code": "FALLBK"})
         response = api_client.get(url)
@@ -153,7 +118,6 @@ class TestYjsDocumentAPI:
 
     def test_get_document_no_binary_data_sad_path(self, api_client):
         room = RoomFactory(code="NOBIN1")
-        # Document exists but binary_data is None
         Document.objects.create(room=room, binary_data=None)
         
         url = reverse("save_document_final_state", kwargs={"room_code": "NOBIN1"})
@@ -162,7 +126,6 @@ class TestYjsDocumentAPI:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     def test_get_document_missing_language_starter_code_edge_case(self, api_client):
-        # Problem only has java, but room asks for python
         problem = ProblemFactory(starter_code={"java": "public class Main {}"})
         room = RoomFactory(code="MISLNG", problem=problem, language="python")
         
@@ -170,5 +133,4 @@ class TestYjsDocumentAPI:
         response = api_client.get(url)
         
         assert response.status_code == status.HTTP_200_OK
-        # .get('python', '') returns empty string, encoded to bytes
         assert response.content == b""

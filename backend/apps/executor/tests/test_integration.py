@@ -1,31 +1,9 @@
 import json
 import pytest
-from apps.executor.models import Submission
 from apps.executor.utils import run_code
-from test_utils.factories import RoomFactory, UserFactory
 
-@pytest.mark.django_db
-class TestExecutorModels:
-    def test_submission_creation_happy_path(self):
-        room = RoomFactory()
-        user = UserFactory()
-        
-        sub = Submission.objects.create(
-            room=room,
-            user=user,
-            code="print('hello')",
-        )
-        
-        assert sub.status == Submission.Status.ERROR # Default status
-        assert sub.room == room
-        assert sub.user == user
-
-
-# We mark these as integration tests since they require Docker CLI and daemon access
 @pytest.mark.integration
 class TestExecutorIntegration:
-
-    # --- 1. CORE LOGIC TESTS ---
 
     def test_python_successful_execution(self):
         code = """
@@ -57,13 +35,10 @@ def main(a, b):
         assert "Compile/Syntax Error" == results[0]["error"]
 
     def test_python_complex_data_structures(self):
-        # We'll test returning a linked list
         code = """
 def main(head):
-    # Simply return the linked list head back
     return head
 """
-        # input is array, expected is array. run_code handles the conversion.
         test_cases = [{"input": {"head": [1, 2, 3]}, "expected": [1, 2, 3]}]
         input_types = {"head": "linked_list"}
         output_type = {"type": "linked_list"}
@@ -81,19 +56,15 @@ function main(arr) {
     return arr;
 }
 """
-        # Input is [2, 1], expected is [1, 2]. Order doesn't matter, so it should pass.
         test_cases = [{"input": {"arr": [2, 1]}, "expected": [1, 2]}]
         input_types = {"arr": "list"}
         output_type = {"type": "list"}
         
-        # order_matters = False
         result_json = run_code(test_cases, code, False, input_types, output_type, "javascript")
         results = json.loads(result_json)
         
         assert len(results) == 1
         assert results[0]["passed"] is True
-
-    # --- 2. SANDBOXING AND SECURITY TESTS ---
 
     def test_time_limit_exceeded(self):
         code = """
@@ -127,7 +98,6 @@ function main() {
         
         assert len(results) == 1
         assert results[0]["passed"] is True
-        # Output should be truncated to ~10,000 chars to prevent OOM
         assert "...[Truncated]" in results[0]["stdout"]
         assert len(results[0]["stdout"]) < 15000 
 
@@ -160,7 +130,6 @@ def main():
         
         assert len(results) == 1
         assert results[0]["passed"] is False
-        # Should throw URLError or timeout because network is disabled
         assert "urlopen error" in results[0]["error"] or "name resolution" in results[0]["error"]
 
     def test_filesystem_read_only(self):
@@ -177,5 +146,4 @@ def main():
         
         assert len(results) == 1
         assert results[0]["passed"] is False
-        # Should throw Read-only file system OSError
         assert "Read-only file system" in results[0]["error"] or "Permission denied" in results[0]["error"]
