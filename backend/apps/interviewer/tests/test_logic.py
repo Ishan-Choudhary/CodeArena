@@ -4,7 +4,7 @@ from apps.interviewer.interviewer import last_n_chat_logs, build_context
 from test_utils.factories import RoomFactory
 from asgiref.sync import sync_to_async
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestInterviewerLogic:
 

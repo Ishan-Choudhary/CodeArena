@@ -12,7 +12,7 @@ class MockAPIError(Exception):
     def __str__(self):
         return self.message
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestInterviewerLLMCall:
 
