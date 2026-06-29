@@ -288,3 +288,49 @@ class TestRoomConsumers:
         
         await comm_host.disconnect()
         await comm_part.disconnect()
+
+    @patch('apps.rooms.consumers.interviewer.call_llm', new_callable=AsyncMock)
+    async def test_ai_room_consumer_malformed_json_ignored(self, mock_call_llm):
+        user = await sync_to_async(UserFactory)()
+        room = await sync_to_async(RoomFactory)(host=user, participant=user, problem=await sync_to_async(ProblemFactory)(), testMode=Room.Mode.PRACTICE)
+        
+        comm = WebsocketCommunicator(AiRoomConsumer.as_asgi(), f"/ws/room/{room.code}/")
+        comm.scope["url_route"] = {"kwargs": {"room_name": room.code}}
+        comm.scope["user"] = user
+        connected, _ = await comm.connect()
+        assert connected
+
+        # Send malformed JSON (raw text) - should not crash
+        await comm.send_to(text_data="This is not valid JSON")
+        
+        # Prove connection is still alive by sending valid chat
+        await comm.send_json_to({"type": "chat.message", "data": {"message": "still alive", "code": "print()"}})
+        
+        resp = await comm.receive_json_from()
+        assert resp["type"] == "chat.message"
+        assert resp["message"] == "still alive"
+        await comm.disconnect()
+
+    @patch('apps.rooms.consumers.interviewer.call_llm', new_callable=AsyncMock)
+    @patch('apps.rooms.consumers.run_code')
+    async def test_ai_room_consumer_submission_server_error(self, mock_run_code, mock_call_llm):
+        mock_run_code.return_value = json.dumps([{"error": "Host configuration error"}])
+        
+        user = await sync_to_async(UserFactory)()
+        problem = await sync_to_async(ProblemFactory)()
+        room = await sync_to_async(RoomFactory)(host=user, participant=user, problem=problem, testMode=Room.Mode.PRACTICE)
+        
+        comm = WebsocketCommunicator(AiRoomConsumer.as_asgi(), f"/ws/room/{room.code}/")
+        comm.scope["url_route"] = {"kwargs": {"room_name": room.code}}
+        comm.scope["user"] = user
+        connected, _ = await comm.connect()
+        assert connected
+
+        await comm.send_json_to({"type": "submission.request", "data": {"code": "print(1)"}})
+        
+        resp = await comm.receive_json_from()
+        assert resp["type"] == "submission.result"
+        assert resp["status"] == "server_error"
+        assert "Host configuration error" in resp["message"]
+        
+        await comm.disconnect()
