@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "martor",
     "django_cookiejwt",
     "drf_spectacular",
+    "import_export"
 ]
 
 MIDDLEWARE = [
