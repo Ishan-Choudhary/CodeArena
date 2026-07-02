@@ -9,6 +9,7 @@ const DJANGO_API = process.env.DJANGO_API_URL || "http://backend:8000/api/yjs";
 const redisConfig  =    {
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: Number.parseInt(process.env.REDIS_PORT || 6379, 10),
+    db: 3,
 }
 const redisClient = new IORedis(redisConfig);
 

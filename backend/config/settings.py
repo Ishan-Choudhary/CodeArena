@@ -30,6 +30,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 CORS_ALLOW_ALL_ORIGINS = True
+CSRF_TRUSTED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 # Application definition
 
@@ -204,4 +205,16 @@ CACHES = {
             "SOCKET_TIMEOUT": 5,
         }
     }
+}
+
+CELERY_BROKER_URL = "redis://redis:6379/2"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    'cleanup-dead-rooms-every-15-minutes': {
+        'task': 'apps.rooms.tasks.cleanup_dead_rooms',
+        'schedule': crontab(minute='*/15'),
+    },
 }

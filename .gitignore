@@ -11,3 +11,7 @@ backend/.coverage
 
 **/__pycache__/
 *.pyc
+celerybeat-schedule*
+backend/db.sqlite3
+backend/.pytest_cache/
+frontend/dist/

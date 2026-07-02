@@ -57,6 +57,36 @@ services:
     depends_on:
     - backend
 
+  celery_worker:
+    build:
+      context: ./backend/
+    command: celery -A config worker -l info
+    volumes:
+      - type: bind
+        source: ./backend/
+        target: /app/
+    env_file:
+      - db.env
+      - backend.env
+    depends_on:
+      - db
+      - redis
+
+  celery_beat:
+    build:
+      context: ./backend/
+    command: celery -A config beat -l info
+    volumes:
+      - type: bind
+        source: ./backend/
+        target: /app/
+    env_file:
+      - db.env
+      - backend.env
+    depends_on:
+      - db
+      - redis
+
 volumes:
   pgdata:
   redis_data:

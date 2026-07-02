@@ -39,12 +39,14 @@ export default function SessionListTable({ rooms, loadingRooms, username, handle
                         Join
                       </button>
                     )}
-                    <button 
-                      onClick={() => handleReplay(room.code)}
-                      className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors px-3 py-1 rounded cursor-pointer"
-                    >
-                      Replay
-                    </button>
+                    {room.status === 'ENDED' && (
+                      <button 
+                        onClick={() => handleReplay(room.code)}
+                        className="text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors px-3 py-1 rounded cursor-pointer"
+                      >
+                        Replay
+                      </button>
+                    )}
                     {room.host === username && (
                       <button 
                         onClick={() => handleDeleteRoom(room.code)}
