@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { fetchWithAuth, getCookie } from '../utils/api';
 
 export default function LoginPage({ isRegister = false }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -14,6 +18,12 @@ export default function LoginPage({ isRegister = false }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
+    if (isRegister && password !== confirmPassword) {
+      toast.error('Passwords do not match');
+      setLoading(false);
+      return;
+    }
 
     const url = isRegister ? `${import.meta.env.VITE_API_URL}/api/auth/users/` : `${import.meta.env.VITE_API_URL}/api/jwt/token/`;
     const body = isRegister 
@@ -131,19 +141,52 @@ export default function LoginPage({ isRegister = false }) {
                 required 
               />
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 relative">
               <label className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
                 Password
               </label>
-              <input 
-                type="password" 
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full p-3 bg-bg-elevated border border-bg-border rounded-lg text-text-primary text-sm font-ui outline-none focus:border-accent transition-colors"
-                placeholder="••••••••"
-                required 
-              />
+              <div className="relative w-full">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full p-3 bg-bg-elevated border border-bg-border rounded-lg text-text-primary text-sm font-ui outline-none focus:border-accent transition-colors pr-10"
+                  placeholder="••••••••"
+                  required 
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
+            {isRegister && (
+              <div className="flex flex-col gap-2 relative">
+                <label className="text-[10px] font-medium text-text-muted uppercase tracking-wider">
+                  Confirm Password
+                </label>
+                <div className="relative w-full">
+                  <input 
+                    type={showConfirmPassword ? "text" : "password"} 
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    className="w-full p-3 bg-bg-elevated border border-bg-border rounded-lg text-text-primary text-sm font-ui outline-none focus:border-accent transition-colors pr-10"
+                    placeholder="••••••••"
+                    required 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button 
               type="submit" 

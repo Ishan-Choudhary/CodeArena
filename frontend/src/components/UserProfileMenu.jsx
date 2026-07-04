@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut } from 'lucide-react';
+import { LogOut, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { getCookie } from '../utils/api';
@@ -39,6 +39,10 @@ export default function UserProfileMenu({ username }) {
     navigate('/');
   };
 
+  const handleDeleteAccount = () => {
+    navigate('/delete');
+  };
+
   const getDisplayUsername = (name) => {
     if (!name) return 'user';
     return name.length > 6 ? name.substring(0, 6) + '...' : name;
@@ -58,9 +62,15 @@ export default function UserProfileMenu({ username }) {
         <div className="absolute top-8 right-0 mt-2 w-48 bg-bg-surface border border-bg-border rounded-lg shadow-xl py-1 z-50">
           <button 
             onClick={handleLogout}
-            className="w-full text-left px-4 py-2 text-sm text-error hover:bg-bg-elevated flex items-center gap-2 transition-colors"
+            className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-bg-elevated flex items-center gap-2 transition-colors"
           >
             <LogOut size={14} /> Logout
+          </button>
+          <button 
+            onClick={handleDeleteAccount}
+            className="w-full text-left px-4 py-2 text-sm text-error hover:bg-bg-elevated flex items-center gap-2 transition-colors border-t border-bg-border mt-1 pt-2"
+          >
+            <Trash2 size={14} /> Delete Account
           </button>
         </div>
       )}

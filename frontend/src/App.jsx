@@ -8,6 +8,7 @@ import RoomSettingsPage from './pages/RoomSettingsPage';
 import MockMode from './pages/MockMode';
 import JoinSessionPage from './pages/JoinSessionPage';
 import ReplayPage from "./pages/ReplayPage";
+import DeleteAccountPage from "./pages/DeleteAccountPage";
 import './index.css';
 
 import { Toaster } from 'react-hot-toast';
@@ -39,6 +40,7 @@ function App() {
         <Route path="/practice" element={<PracticeMode />} />
         <Route path="/join-session" element={<JoinSessionPage />} />
         <Route path="/replay" element={<ReplayPage />} />
+        <Route path="/delete" element={<DeleteAccountPage />} />
       </Routes>
     </Router>
   );

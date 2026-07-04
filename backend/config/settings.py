@@ -218,3 +218,8 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/15'),
     },
 }
+
+DJOSER = {
+    'USER_ID_FIELD': 'username',
+    'TOKEN_MODEL': None
+}
