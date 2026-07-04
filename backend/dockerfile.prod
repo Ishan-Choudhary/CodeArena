@@ -1,0 +1,18 @@
+FROM python:3.14-slim
+
+RUN apt-get update && apt-get install -y docker.io
+RUN mkdir /app
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN pip install --upgrade pip
+COPY requirements.txt /app/
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . /app/
+
+RUN DJANGO_SETTINGS_MODULE=config.settings_prod python manage.py collectstatic --noinput
+
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]

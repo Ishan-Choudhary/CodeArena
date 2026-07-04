@@ -1,0 +1,89 @@
+name: codearena-prod
+
+services:
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - hocuspocus
+    volumes:
+      - static_volumes:/app/staticfiles
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend/
+      dockerfile: dockerfile.prod
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - static_volumes:/app/staticfiles
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - db.env
+      - backend.prod.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings_prod
+    restart: unless-stopped
+
+  hocuspocus:
+    build:
+      context: ./yjs-server
+    env_file:
+    - backend.env
+    depends_on:
+    - backend
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: ./backend/
+    command: celery -A config worker -l info
+    env_file:
+      - db.env
+      - backend.prod.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings_prod
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  celery_beat:
+    build:
+      context: ./backend/
+    command: celery -A config beat -l info
+    env_file:
+      - db.env
+      - backend.prod.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings_prod
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
+  db:
+    image: postgres:18.4
+    env_file: "db.env"
+    volumes:
+      - pgdata:/var/lib/postgresql/
+    restart: unless-stopped
+
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+
+volumes:
+  pgdata:
+  redis_data:
+  static_volumes:

@@ -5,17 +5,17 @@ import axios from "axios";
 import * as Y from "yjs";
 
 
-const DJANGO_API = process.env.DJANGO_API_URL || "http://backend:8000/api/yjs";
+const DJANGO_API = process.env.DJANGO_API_URL;
 const redisConfig  =    {
-    host: process.env.REDIS_HOST || "127.0.0.1",
-    port: Number.parseInt(process.env.REDIS_PORT || 6379, 10),
+    host: process.env.REDIS_HOST,
+    port: Number.parseInt(process.env.REDIS_PORT, 10),
     db: 3,
 }
 const redisClient = new IORedis(redisConfig);
 
 const server = new Server({
 
-    port: process.env.port || 1234,
+    port: process.env.PORT,
     debounce: 60000,
     maxDebounce: 120000,
 
