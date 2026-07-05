@@ -11,6 +11,8 @@ services:
       - backend
       - hocuspocus
     volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
       - static_volumes:/app/staticfiles
     restart: unless-stopped
 
