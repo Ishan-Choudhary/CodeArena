@@ -37,7 +37,7 @@ services:
     build:
       context: ./yjs-server
     env_file:
-    - backend.env
+    - backend.prod.env
     depends_on:
     - backend
     restart: unless-stopped
