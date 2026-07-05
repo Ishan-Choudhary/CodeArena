@@ -20,11 +20,13 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularAPIView
 )
-
+import os
 from . import views
 
+ADMIN_URL = os.environ.get("DJANGO_ADMIN_PANEL", "api/admin/")
+
 urlpatterns = [
-    path('api/admin/', admin.site.urls),
+    path(ADMIN_URL, admin.site.urls),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/schema/swagger", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
     path("api/jwt/", include("django_cookiejwt.urls")),
