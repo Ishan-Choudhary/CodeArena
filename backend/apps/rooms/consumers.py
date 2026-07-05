@@ -1,3 +1,4 @@
+import asyncio
 import json
 from asgiref.sync import sync_to_async
 from channels.db import database_sync_to_async
@@ -246,7 +247,7 @@ class AiRoomConsumer(BaseRoomConsumer):
         await save_message(room_obj.id, InterviewMessage.Role.USER, msg_content)
         
         submission_info = await get_submission_info(room_obj.id)
-        await interviewer.call_llm(room_obj.problem.description, event["data"]["code"], submission_info, room_obj.id, self.room_group_name)
+        asyncio.create_task(interviewer.call_llm(room_obj.problem.description, event["data"]["code"], submission_info, room_obj.id, self.room_group_name))
 
 
     async def submission_request(self, event):
@@ -277,7 +278,7 @@ class AiRoomConsumer(BaseRoomConsumer):
             
             await self.channel_layer.group_send(self.room_group_name, {"type": "submission.result", "status": submission_instance.status, "message": err_msg, "details": code_output[0].get("details", "")})
             submission_info = await get_submission_info(room_obj.id)
-            await interviewer.call_llm(room_obj.problem.description, code, submission_info, room_obj.id, self.room_group_name)
+            asyncio.create_task(interviewer.call_llm(room_obj.problem.description, code, submission_info, room_obj.id, self.room_group_name))
             return
 
         failed_cases = [case for case in code_output if case["passed"] == False]
@@ -306,7 +307,7 @@ class AiRoomConsumer(BaseRoomConsumer):
             })
 
         submission_info = await get_submission_info(room_obj.id)
-        await interviewer.call_llm(room_obj.problem.description, code, submission_info, room_obj.id, self.room_group_name)
+        asyncio.create_task(interviewer.call_llm(room_obj.problem.description, code, submission_info, room_obj.id, self.room_group_name))
         return
 
     async def chat_stream_start(self, event):
