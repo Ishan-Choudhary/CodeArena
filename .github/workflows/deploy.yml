@@ -21,19 +21,19 @@ jobs:
           docker compose run backend pytest
           docker compose down
 
-deploy:
-  name: Deploy to DigitalOcean
-  needs: test
-  runs-on: ubuntu-latest
-  stesp:
-    - name: Secure SSH and Deploy
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{secrets.DO_HOST}}
-        username: ${{secrets.DO_USERNAME}}
-        key: ${{secrets.DO_SSH_KEY}}
-      script: |
-        cd ~/CodeArena
-        git pull origin main
-        docker compose -f docker-compose.prod.yml up -d --build
-        docker system prune -f
+  deploy:
+    name: Deploy to DigitalOcean
+    needs: test
+    runs-on: ubuntu-latest
+    stesp:
+      - name: Secure SSH and Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{secrets.DO_HOST}}
+          username: ${{secrets.DO_USERNAME}}
+          key: ${{secrets.DO_SSH_KEY}}
+        script: |
+          cd ~/CodeArena
+          git pull origin main
+          docker compose -f docker-compose.prod.yml up -d --build
+          docker system prune -f
