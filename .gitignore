@@ -19,3 +19,5 @@ frontend/dist/
 exported_data.json
 problems_backup.json
 frontend/.env.production
+
+*:Zone.Identifier
