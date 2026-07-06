@@ -4,8 +4,8 @@
 CodeArena is a collaborative coding platform designed for developers to practice algorithmic problem-solving and conduct mock interviews. It offers a comprehensive environment featuring real-time collaborative editing, an AI-powered technical interviewer, and secure, containerized code execution. Built for both solo practice and multiplayer technical interviews, CodeArena provides a seamless experience for improving coding proficiency.
 
 ## Live Demo
-[Link to Live Demo]()
-<video src="./demo.mp4" controls="controls" style="max-width: 100%;"></video>
+[Link to Live Demo](https://codearenahq.dev)
+https://github.com/user-attachments/assets/a4c80b3c-bfaf-4549-ac68-b3ce874796b8
 ### Test Credentials (Live Website Only)
 You can use the following default credentials to log in and try out the live website:
 - **Email:** `johndoe@test.com` | **Password:** `Testing@1234!`
