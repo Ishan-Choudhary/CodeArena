@@ -5,7 +5,9 @@ CodeArena is a collaborative coding platform designed for developers to practice
 
 ## Live Demo
 [Link to Live Demo](https://codearenahq.dev)
+
 https://github.com/user-attachments/assets/a4c80b3c-bfaf-4549-ac68-b3ce874796b8
+
 ### Test Credentials (Live Website Only)
 You can use the following default credentials to log in and try out the live website:
 - **Email:** `johndoe@test.com` | **Password:** `Testing@1234!`
