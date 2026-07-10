@@ -33,6 +33,9 @@ jobs:
           echo "PORT=1234" >> backend.env
           echo "REDIS_HOST=redis" >> backend.env
           echo "REDIS_PORT=6379" >> backend.env
+          
+          docker compose up -d db redis
+          docker compose run backend pytest
   deploy:
     name: Deploy to DigitalOcean
     needs: test
